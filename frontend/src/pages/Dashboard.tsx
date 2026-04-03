@@ -12,6 +12,7 @@ import { Footer } from '@/components/Footer'
 import { PremiumButton } from '@/components/PremiumButton'
 import { AnalysisResult } from '@/lib/api'
 import { formatFileSize } from '@/lib/utils'
+import { generatePDFReport } from '@/lib/generateReport'
 
 const ENTITY_GROUPS = [
   { key: 'persons',          label: 'Names',         icon: User,      color: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.2)' },
@@ -164,12 +165,7 @@ export default function Dashboard() {
 
   const downloadReport = () => {
     if (!result) return
-    const { extractedText, ...clean } = result
-    const blob = new Blob([JSON.stringify(clean, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `${result.fileName || 'report'}_analysis.json`; a.click()
-    URL.revokeObjectURL(url)
+    generatePDFReport(result, result.fileName || uploadedFile?.name || 'report')
   }
 
   const fileExt = result?.fileName?.split('.').pop()?.toLowerCase()
