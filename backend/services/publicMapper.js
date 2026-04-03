@@ -80,6 +80,18 @@ function sanitizeSummary(summary) {
   return s.trim()
 }
 
+// Topic words that should never appear in a real person name
+const NAME_TOPIC_WORDS = new Set([
+  'analysis','innovation','report','industry','technology','artificial',
+  'intelligence','machine','learning','data','science','business',
+  'financial','economic','strategic','corporate','enterprise','research',
+  'development','management','operations','performance','overview',
+  'summary','review','assessment','evaluation','study','sector',
+  'landscape','ecosystem','framework','platform','digital','transformation',
+  'growth','trends','insights','outlook','forecast','market','global',
+  'national','international','revenue','profit','investment','capital',
+])
+
 function validateNames(arr) {
   return cleanAndFilter(arr, val => {
     if (/\d/.test(val)) return false
@@ -88,6 +100,9 @@ function validateNames(arr) {
     if (/github|linkedin|leetcode/i.test(val)) return false
     if (val.split(/\s+/).length > 5) return false
     if (isSectionHeadingLike(val)) return false
+    // Reject topic/title phrases
+    const words = val.toLowerCase().split(/\s+/)
+    if (words.some(w => NAME_TOPIC_WORDS.has(w))) return false
     return true
   })
 }

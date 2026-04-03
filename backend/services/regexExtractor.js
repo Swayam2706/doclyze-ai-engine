@@ -361,20 +361,38 @@ function extractGeneralOrganizations(text) {
     }
   }
 
-  // Strategy 2: Context-phrase extraction
+  // Strategy 2: Context-phrase extraction — handles "X, Y, and Z" lists
   const contextPatterns = [
-    /(?:companies|firms|organizations|corporations|brands|players|giants|vendors|providers|platforms)\s+(?:such as|including|like|namely|as|:)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\.|,\s+(?:and|which|are|have|were)|$)/gi,
-    /(?:including|such as|like|namely)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\s+(?:and|which|are|have|were|to|in|for|with|by)|[.,;]|$)/gi,
+    /(?:companies|firms|organizations|corporations|brands|players|giants|vendors|providers|platforms)\s+(?:such as|including|like|namely|as|:)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\.|,\s+(?:which|are|have|were)|$)/gi,
+    /(?:including|such as|like|namely)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\s+(?:which|are|have|were|to|in|for|with|by)|[.;]|$)/gi,
   ]
   for (const p of contextPatterns) {
     for (const m of text.matchAll(p)) {
       const raw = (m[1] || m[0]).trim()
-      const parts = raw.split(/,\s*|\s+and\s+/)
+      // Split on comma and " and " to catch all items in a list
+      const parts = raw.split(/,\s*(?:and\s+)?|\s+and\s+/)
       for (const part of parts) {
         const cleaned = part.trim().replace(/[.,;:]+$/, '').trim()
-        if (cleaned.length > 2 && cleaned.length < 60 && /^[A-Z]/.test(cleaned)) {
+        if (cleaned.length > 1 && cleaned.length < 60 && /^[A-Z]/.test(cleaned)) {
           out.add(cleaned)
         }
+      }
+    }
+  }
+
+  // Strategy 2b: Inline list pattern — "Google, Microsoft, and NVIDIA"
+  // Catches comma-separated org lists anywhere in text
+  const listPattern = /\b([A-Z][A-Za-z0-9]+)(?:,\s*([A-Z][A-Za-z0-9]+))+(?:,?\s+and\s+([A-Z][A-Za-z0-9]+))?/g
+  for (const m of text.matchAll(listPattern)) {
+    // Only process if all items are known orgs or short single words (likely org names)
+    const fullMatch = m[0]
+    const items = fullMatch.split(/,\s*(?:and\s+)?|\s+and\s+/).map(s => s.trim()).filter(Boolean)
+    // Check if at least one item is a known org — if so, add all
+    const hasKnownOrg = items.some(item => knownOrgs.some(k => k.toLowerCase() === item.toLowerCase()))
+    if (hasKnownOrg) {
+      for (const item of items) {
+        const clean = item.replace(/[.,;:]+$/, '').trim()
+        if (clean.length > 1 && /^[A-Z]/.test(clean)) out.add(clean)
       }
     }
   }
@@ -412,7 +430,10 @@ function extractGeneralOrganizations(text) {
 
 function extractGeneralPersons(text) {
   const out = new Set()
-  const stopWords = new Set([
+
+  // Words that indicate a phrase is a topic/title, NOT a person name
+  const topicWords = new Set([
+    // Common stopwords
     'The','This','That','These','Those','With','From','Into','Over','Under',
     'About','After','Before','During','Through','Between','Among','Within',
     'Without','According','Based','Using','Including','Such','Each','Both',
@@ -424,13 +445,29 @@ function extractGeneralPersons(text) {
     'First','Second','Third','Last','Next','Previous','Current',
     'Global','Local','National','International','Digital','Virtual',
     'Annual','Monthly','Weekly','Daily','Recent','Future','Past',
+    // Topic/industry words that appear in titles but not person names
+    'Technology','Industry','Analysis','Innovation','Report','Market',
+    'Artificial','Intelligence','Machine','Learning','Data','Science',
+    'Business','Financial','Economic','Strategic','Corporate','Enterprise',
+    'Research','Development','Management','Operations','Performance',
+    'Overview','Summary','Review','Assessment','Evaluation','Study',
+    'Sector','Segment','Landscape','Ecosystem','Framework','Platform',
+    'Digital','Transformation','Adoption','Integration','Implementation',
+    'Growth','Trends','Insights','Outlook','Forecast','Projection',
+    'Quarter','Annual','Revenue','Profit','Loss','Investment','Capital',
   ])
+
   const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b/g) || []
   for (const m of matches) {
     const words = m.split(/\s+/)
-    if (words.some(w => stopWords.has(w))) continue
+    // Reject if any word is a topic/stopword
+    if (words.some(w => topicWords.has(w))) continue
     if (m.length > 40) continue
     if (isSectionHeading(m)) continue
+    // Must look like a real name: each word starts with capital, rest lowercase
+    // Reject if any word is all-caps (acronym) or contains numbers
+    if (words.some(w => /[0-9]/.test(w))) continue
+    if (words.some(w => w === w.toUpperCase() && w.length > 2)) continue
     out.add(m)
   }
   return [...out].slice(0, 8)

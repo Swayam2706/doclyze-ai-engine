@@ -57,6 +57,20 @@ function isCleanEntity(val) {
   return true
 }
 
+// Topic/title words that should never appear in a real person name
+const TOPIC_WORDS = new Set([
+  'analysis','innovation','report','industry','technology','artificial',
+  'intelligence','machine','learning','data','science','business',
+  'financial','economic','strategic','corporate','enterprise','research',
+  'development','management','operations','performance','overview',
+  'summary','review','assessment','evaluation','study','sector',
+  'segment','landscape','ecosystem','framework','platform','digital',
+  'transformation','adoption','integration','implementation','growth',
+  'trends','insights','outlook','forecast','projection','quarter',
+  'annual','revenue','profit','investment','capital','market','global',
+  'national','international','virtual','recent','future','current',
+])
+
 function isValidPerson(val) {
   if (!isCleanEntity(val)) return false
   const t = val.trim()
@@ -65,6 +79,9 @@ function isValidPerson(val) {
   if (/https?:\/\/|\.com|\.org|\.net|\.io/i.test(t)) return false
   if (/github|linkedin|leetcode/i.test(t)) return false
   if (t.split(/\s+/).length > 5) return false
+  // Reject if any word is a topic/title word
+  const words = t.toLowerCase().split(/\s+/)
+  if (words.some(w => TOPIC_WORDS.has(w))) return false
   return true
 }
 
