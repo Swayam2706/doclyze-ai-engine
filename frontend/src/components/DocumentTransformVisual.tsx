@@ -153,7 +153,10 @@ export function DocumentTransformVisual() {
     if (!outerRef.current) return
     const ro = new ResizeObserver(entries => {
       for (const e of entries) {
-        setCardSize({ w: e.contentRect.width, h: e.contentRect.height })
+        const { width, height } = e.contentRect
+        if (width > 0 && height > 0) {
+          setCardSize({ w: width, h: height })
+        }
       }
     })
     ro.observe(outerRef.current)
@@ -214,8 +217,8 @@ export function DocumentTransformVisual() {
           {/* Moving line segment — dasharray trick: short visible dash, long invisible gap */}
           <rect
             x="0.5" y="0.5"
-            width={cardSize.w - 1}
-            height={cardSize.h - 1}
+            width={Math.max(1, cardSize.w - 1)}
+            height={Math.max(1, cardSize.h - 1)}
             rx="13" ry="13"
             fill="none"
             stroke="url(#lineGrad)"
