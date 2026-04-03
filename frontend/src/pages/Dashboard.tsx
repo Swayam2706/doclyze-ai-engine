@@ -1,11 +1,11 @@
-﻿import { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   FileText, Sparkles, TrendingUp, Copy, Check, Clock, File,
   MapPin, Calendar, DollarSign, User, Building, Code, FolderOpen,
   Mail, Phone, Link2, ChevronDown, Eye, Plus, Download, Search,
-  ExternalLink, AlertTriangle, RefreshCw,
+  ExternalLink, AlertTriangle, RefreshCw, Activity, Cpu, Gauge,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Footer } from '@/components/Footer'
@@ -35,6 +35,82 @@ const CARD = {
     border: '1px solid rgba(255,255,255,0.06)',
     boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
   },
+}
+
+// ── Processing Insights card ──────────────────────────────────
+function ProcessingInsights({ result }: { result: AnalysisResult }) {
+  const rows = [
+    result.fileSize > 0 && {
+      icon: File,
+      label: 'File Size',
+      value: (result.fileSize / 1024).toFixed(1) + ' KB',
+    },
+    result.metadata?.processing_time_ms > 0 && {
+      icon: Clock,
+      label: 'Processing Time',
+      value: (result.metadata.processing_time_ms / 1000).toFixed(1) + ' s',
+    },
+    {
+      icon: Cpu,
+      label: 'OCR Engine',
+      value: result.metadata?.ocr_used
+        ? (result.metadata.ocr_engine === 'vision' ? 'Vision OCR' : result.metadata.ocr_engine || 'OCR')
+        : 'Not Used',
+      muted: !result.metadata?.ocr_used,
+    },
+    result.confidence > 0 && {
+      icon: Gauge,
+      label: 'Confidence',
+      value: Math.round(result.confidence * 100) + '%',
+      accent: result.confidence >= 0.7 ? '#6366f1' : result.confidence >= 0.4 ? '#fbbf24' : '#f87171',
+    },
+  ].filter(Boolean) as Array<{
+    icon: React.ElementType
+    label: string
+    value: string
+    muted?: boolean
+    accent?: string
+  }>
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18, duration: 0.35 }}
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: 'rgba(12,11,22,0.7)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <Activity className="h-3.5 w-3.5" style={{ color: 'rgba(99,102,241,0.7)' }} />
+        <span className="text-[11px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          Processing Insights
+        </span>
+      </div>
+
+      {/* Rows */}
+      <div className="px-4 py-3 space-y-3">
+        {rows.map(({ icon: Icon, label, value, muted, accent }) => (
+          <div key={label} className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }} />
+              <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</span>
+            </div>
+            <span
+              className="text-[12px] font-semibold tabular-nums shrink-0"
+              style={{ color: accent ?? (muted ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.75)') }}
+            >
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  )
 }
 
 export default function Dashboard() {
@@ -414,63 +490,71 @@ export default function Dashboard() {
                 </motion.div>
 
               </div>{/* end left column */}
-              {/* ═══ RIGHT: Document Preview (sticky) ═══ */}
+              {/* ═══ RIGHT: Sidebar (sticky) ═══ */}
               <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
                 className="w-[320px] shrink-0 hidden xl:block">
-                <div className="sticky top-20 rounded-xl overflow-hidden" style={CARD.secondary}>
-                  {/* Header */}
-                  <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                      <span className="text-[11px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'rgba(255,255,255,0.3)' }}>Document Preview</span>
+                <div className="sticky top-20 space-y-4">
+
+                  {/* ── Document Preview ── */}
+                  <div className="rounded-xl overflow-hidden" style={CARD.secondary}>
+                    {/* Header */}
+                    <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                        <span className="text-[11px] font-semibold tracking-[0.12em] uppercase" style={{ color: 'rgba(255,255,255,0.3)' }}>Document Preview</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button className="p-1.5 rounded hover:bg-white/5 transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }}><Search className="h-3 w-3" /></button>
+                        <button className="p-1.5 rounded hover:bg-white/5 transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }}><ExternalLink className="h-3 w-3" /></button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button className="p-1.5 rounded hover:bg-white/5 transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }}><Search className="h-3 w-3" /></button>
-                      <button className="p-1.5 rounded hover:bg-white/5 transition-colors" style={{ color: 'rgba(255,255,255,0.25)' }}><ExternalLink className="h-3 w-3" /></button>
-                    </div>
-                  </div>
-                  {/* Preview body */}
-                  <div className="p-3" style={{ minHeight: '420px' }}>
-                    {preview && uploadedFile?.type.startsWith('image/') ? (
-                      <img src={preview} alt="Preview" className="w-full rounded-lg object-contain" style={{ maxHeight: '560px' }} />
-                    ) : preview && uploadedFile?.type === 'application/pdf' ? (
-                      <iframe src={preview} title="PDF" className="w-full rounded-lg border-0" style={{ height: '560px' }} />
-                    ) : uploadedFile?.type?.includes('wordprocessingml') ? (
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)' }}>
-                          <FileText className="h-7 w-7 text-blue-400 shrink-0" />
-                          <div>
-                            <p className="text-[13px] font-medium text-white">{uploadedFile.name}</p>
-                            <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Word Document · {(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                    {/* Preview body */}
+                    <div className="p-3" style={{ minHeight: '420px' }}>
+                      {preview && uploadedFile?.type.startsWith('image/') ? (
+                        <img src={preview} alt="Preview" className="w-full rounded-lg object-contain" style={{ maxHeight: '560px' }} />
+                      ) : preview && uploadedFile?.type === 'application/pdf' ? (
+                        <iframe src={preview} title="PDF" className="w-full rounded-lg border-0" style={{ height: '560px' }} />
+                      ) : uploadedFile?.type?.includes('wordprocessingml') ? (
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)' }}>
+                            <FileText className="h-7 w-7 text-blue-400 shrink-0" />
+                            <div>
+                              <p className="text-[13px] font-medium text-white">{uploadedFile.name}</p>
+                              <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Word Document · {(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                            </div>
                           </div>
+                          <p className="text-[11px] text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>DOCX preview not available in browser</p>
                         </div>
-                        <p className="text-[11px] text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>DOCX preview not available in browser</p>
-                      </div>
-                    ) : !preview && result ? (
-                      <div className="flex flex-col items-center justify-center gap-3 py-12">
-                        <Eye className="h-7 w-7" style={{ color: 'rgba(255,255,255,0.1)' }} />
-                        <p className="text-[12px] text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                          Analysis restored from session.<br />Re-upload to see preview.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 p-1">
-                        {[1,2,3,4,5].map(b => (
-                          <div key={b} className="space-y-1.5">
-                            {b === 1 && <div className="h-3 rounded" style={{ width: '38%', background: 'rgba(139,92,246,0.1)' }} />}
-                            {[100,88,75,55].map((w,j) => (
-                              <div key={j} className="h-[4px] rounded" style={{ width: `${w - b * 5}%`, background: 'rgba(255,255,255,0.05)' }} />
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      ) : !preview && result ? (
+                        <div className="flex flex-col items-center justify-center gap-3 py-12">
+                          <Eye className="h-7 w-7" style={{ color: 'rgba(255,255,255,0.1)' }} />
+                          <p className="text-[12px] text-center" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                            Analysis restored from session.<br />Re-upload to see preview.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 p-1">
+                          {[1,2,3,4,5].map(b => (
+                            <div key={b} className="space-y-1.5">
+                              {b === 1 && <div className="h-3 rounded" style={{ width: '38%', background: 'rgba(139,92,246,0.1)' }} />}
+                              {[100,88,75,55].map((w,j) => (
+                                <div key={j} className="h-[4px] rounded" style={{ width: `${w - b * 5}%`, background: 'rgba(255,255,255,0.05)' }} />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Metadata footer */}
+                    <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                      <span className="text-[10px] truncate max-w-[160px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{result.fileName}</span>
+                      <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.15)' }}>{formatFileSize(result.fileSize)}</span>
+                    </div>
                   </div>
-                  {/* Metadata footer */}
-                  <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                    <span className="text-[10px] truncate max-w-[160px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{result.fileName}</span>
-                    <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.15)' }}>{formatFileSize(result.fileSize)}</span>
-                  </div>
+
+                  {/* ── Processing Insights ── */}
+                  <ProcessingInsights result={result} />
+
                 </div>
               </motion.div>
 
