@@ -1,4 +1,4 @@
-﻿﻿﻿/**
+﻿﻿﻿﻿﻿/**
  * Deterministic Entity Extraction — regex & rules.
  * Authoritative for: emails, phones, URLs, dates, money, invoice numbers.
  * Type-specific: persons, skills, projects, organizations, locations.
@@ -681,6 +681,35 @@ function extractGeneralOrganizations(text) {
     }
   }
 
+
+  // Strategy 5: Prose institutional category extraction
+  // Catches generic institutional descriptions in reports like:
+  // "financial institutions", "banking platforms", "regulatory authorities"
+  const institutionalPhrases = [
+    /\b(financial\s+institutions?)\b/gi,
+    /\b(banking\s+platforms?)\b/gi,
+    /\b(payment\s+service\s+providers?)\b/gi,
+    /\b(regulatory\s+authorit(?:y|ies))\b/gi,
+    /\b(government\s+agenc(?:y|ies))\b/gi,
+    /\b(cybersecurity\s+(?:firms?|companies|researchers?|analysts?))\b/gi,
+    /\b(cloud\s+(?:providers?|platforms?|services?))\b/gi,
+    /\b(digital\s+(?:banks?|platforms?|payment\s+systems?))\b/gi,
+    /\b(law\s+enforcement\s+agenc(?:y|ies))\b/gi,
+    /\b(central\s+banks?)\b/gi,
+    /\b(investment\s+(?:banks?|firms?))\b/gi,
+    /\b(insurance\s+(?:companies|providers?))\b/gi,
+    /\b(healthcare\s+(?:providers?|institutions?|organizations?))\b/gi,
+    /\b(educational\s+institutions?)\b/gi,
+    /\b(research\s+institutions?)\b/gi,
+  ]
+  for (const p of institutionalPhrases) {
+    for (const m of text.matchAll(p)) {
+      const phrase = m[0].trim()
+      // Capitalize first letter for consistency
+      const normalized = phrase.charAt(0).toUpperCase() + phrase.slice(1)
+      out.add(normalized)
+    }
+  }
   return [...out]
     .filter(o => !isSectionHeading(o))
     .filter(o => o.length > 2 && o.length < 80)
@@ -691,9 +720,13 @@ function extractGeneralOrganizations(text) {
       return !SYNTHETIC_ORG_PREFIXES.has(firstWord)
     })
     .filter(o => {
-      // Verify the org actually appears verbatim in the source text
-      const escaped = o.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
-      return new RegExp('\\b' + escaped + '\\b', 'i').test(text)
+      // Verbatim check only for proper-noun orgs (not generic institutional phrases)
+      // Context-extracted phrases like 'financial institutions' skip this check
+      const words = o.split(/\s+/)
+      const isProperNoun = /^[A-Z][a-z]/.test(o) && words.length <= 3
+      if (!isProperNoun) return true
+      const escaped = o.replace(/[.*+?^${}()|[\]\\\\]/g, '\\\\$&')
+      return new RegExp('\\\\b' + escaped + '\\\\b', 'i').test(text)
     })
     .slice(0, 15)
 }
