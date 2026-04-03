@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿/**
+﻿﻿﻿﻿﻿﻿﻿﻿/**
  * Deterministic Entity Extraction — regex & rules.
  * Authoritative for: emails, phones, URLs, dates, money, invoice numbers.
  * Type-specific: persons, skills, projects, organizations, locations.
@@ -152,7 +152,7 @@ function extractPersonName(rawText) {
     if (/\d/.test(t)) continue
     if (/@/.test(t)) continue
     if (/https?:\/\/|\.com|\.org|\.net|\.io/i.test(t)) continue
-    if (/[|•·,;:]/. test(t)) continue  // contact separator lines
+    if (/[|•·,;:]/.test(t)) continue  // contact separator lines
     const words = t.split(/\s+/)
     if (words.length < 2 || words.length > 4) continue
     // All words must start with capital

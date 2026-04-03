@@ -89,7 +89,6 @@ function isValidOrganization(val) {
   if (!isCleanEntity(val)) return false
   const t = val.trim()
   if (/^\d/.test(t)) return false                // starts with digit
-  if (/^[a-z]/.test(t)) return false             // starts with lowercase
   if (t.split(/\s+/).length > 12) return false   // too long
   return true
 }

@@ -114,7 +114,6 @@ function validateDates(arr) {
 function validateOrganizations(arr) {
   return cleanAndFilter(arr, val => {
     if (/^\d/.test(val)) return false
-    if (/^[a-z]/.test(val)) return false
     if (val.split(/\s+/).length > 12) return false
     if (isSectionHeadingLike(val)) return false
     if (/^(built|implemented|developed|designed|created|managed|led|deployed)/i.test(val)) return false
