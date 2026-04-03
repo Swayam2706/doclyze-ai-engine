@@ -1,6 +1,6 @@
-import React, { useRef, useState, useCallback } from 'react'
+import React, { useRef, useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Upload, Sparkles, Zap, Shield } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
@@ -295,9 +295,22 @@ function CTAButton({ onClick }: { onClick: () => void }) {
 
 export default function Landing() {
   const navigate = useNavigate()
+  const location = useLocation()
   const fileRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Scroll to upload section if navigated here with scrollToUpload flag
+  useEffect(() => {
+    if (location.state?.scrollToUpload) {
+      // Small delay to ensure the page has fully rendered
+      const t = setTimeout(() => {
+        const el = document.getElementById('upload-section')
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 80)
+      return () => clearTimeout(t)
+    }
+  }, [location.state])
 
   const handleFile = useCallback((file: File) => {
     if (!ACCEPTED.includes(file.type)) {

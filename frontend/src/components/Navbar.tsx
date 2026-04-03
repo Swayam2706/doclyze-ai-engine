@@ -8,10 +8,12 @@ export function Navbar() {
 
   const handleAnalyze = () => {
     if (location.pathname === '/') {
+      // Already on landing — just scroll
       const el = document.getElementById('upload-section')
       if (el) el.scrollIntoView({ behavior: 'smooth' })
     } else {
-      navigate('/')
+      // Navigate to landing with a flag to scroll after mount
+      navigate('/', { state: { scrollToUpload: true } })
     }
   }
 
