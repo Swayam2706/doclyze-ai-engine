@@ -362,7 +362,7 @@ export default function Landing() {
 
       {/* ── Hero ── */}
       <section className="relative min-h-screen pt-16 pb-16 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10">
 
           {/* Premium glass container wrapping all hero content */}
           <motion.div
