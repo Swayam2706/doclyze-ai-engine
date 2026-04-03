@@ -1,4 +1,4 @@
-﻿/**
+﻿﻿﻿/**
  * Deterministic Entity Extraction — regex & rules.
  * Authoritative for: emails, phones, URLs, dates, money, invoice numbers.
  * Type-specific: persons, skills, projects, organizations, locations.
@@ -601,12 +601,22 @@ const KNOWN_ORGS = [
   'Reserve Bank','Central Bank','Securities Commission','Financial Authority',
 ]
 
+// Words that are topic/domain words — should NEVER be the start of a synthetic org name
+const SYNTHETIC_ORG_PREFIXES = new Set([
+  'cybersecurity','artificial','intelligence','machine','learning','data','science',
+  'technology','digital','cloud','blockchain','analytics','automation','innovation',
+  'financial','economic','regulatory','compliance','security','privacy','network',
+  'information','software','hardware','internet','mobile','social','media',
+  'healthcare','pharmaceutical','environmental','educational','government',
+  'national','international','global','federal','state','local','public','private',
+])
+
 function extractGeneralOrganizations(text) {
   const out = new Set()
 
-  // Strategy 1: Known org scan
+  // Strategy 1: Known org scan — only returns orgs that ACTUALLY appear in text
   for (const org of KNOWN_ORGS) {
-    const escaped = org.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const escaped = org.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
     const regex = new RegExp('\\b' + escaped + '\\b', 'i')
     if (regex.test(text)) {
       const match = text.match(regex)
@@ -631,7 +641,7 @@ function extractGeneralOrganizations(text) {
     }
   }
 
-  // Strategy 2b: Inline comma list — "Google, Microsoft, and NVIDIA"
+  // Strategy 2b: Inline comma list — only if at least one item is a KNOWN org
   const listPattern = /\b([A-Z][A-Za-z0-9]+)(?:,\s*([A-Z][A-Za-z0-9]+))+(?:,?\s+and\s+([A-Z][A-Za-z0-9]+))?/g
   for (const m of text.matchAll(listPattern)) {
     const items = m[0].split(/,\s*(?:and\s+)?|\s+and\s+/).map(s => s.trim()).filter(Boolean)
@@ -644,14 +654,17 @@ function extractGeneralOrganizations(text) {
     }
   }
 
-  // Strategy 3: Company suffix patterns
+  // Strategy 3: Company suffix patterns — STRICT: reject synthetic topic+suffix combos
   const suffixPats = [
-    /[A-Z][A-Za-z\s&]+ (?:Inc|Corp|LLC|Ltd|Co|Limited|Group|Holdings|Technologies|Solutions|Services|Systems|Pvt|Private)\.?/g,
-    /[A-Z][A-Za-z\s]+ (?:Authority|Department|Ministry|Commission|Agency|Bureau|Office|Bank|Fund|Exchange)/g,
+    /([A-Z][A-Za-z\s&]+?) (?:Inc|Corp|LLC|Ltd|Co|Limited|Group|Holdings|Technologies|Solutions|Services|Systems|Pvt|Private)\.?/g,
+    /([A-Z][A-Za-z\s]+?) (?:Authority|Department|Ministry|Commission|Agency|Bureau|Office|Bank|Fund|Exchange)/g,
   ]
   for (const p of suffixPats) {
     for (const m of text.matchAll(p)) {
-      const org = m[0].trim().replace(/^\d+\s*/, '').replace(/\d{4,}$/, '').trim()
+      const fullMatch = m[0].trim()
+      const prefixWords = (m[1] || '').trim().toLowerCase().split(/\s+/)
+      if (prefixWords.some(w => SYNTHETIC_ORG_PREFIXES.has(w))) continue
+      const org = fullMatch.replace(/^\d+\s*/, '').replace(/\d{4,}$/, '').trim()
       if (org.length > 4 && org.length < 100 && !isSectionHeading(org)) out.add(org)
     }
   }
@@ -672,9 +685,18 @@ function extractGeneralOrganizations(text) {
     .filter(o => !isSectionHeading(o))
     .filter(o => o.length > 2 && o.length < 80)
     .filter(o => !/^\d/.test(o))
+    .filter(o => {
+      // Reject if first word is a synthetic/topic prefix
+      const firstWord = o.split(/\s+/)[0].toLowerCase()
+      return !SYNTHETIC_ORG_PREFIXES.has(firstWord)
+    })
+    .filter(o => {
+      // Verify the org actually appears verbatim in the source text
+      const escaped = o.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+      return new RegExp('\\b' + escaped + '\\b', 'i').test(text)
+    })
     .slice(0, 15)
 }
-
 // ─── General person extraction ───────────────────────────────
 
 const PERSON_TOPIC_WORDS = new Set([
@@ -725,26 +747,26 @@ function extractGeneralPersons(text) {
 
 // ─── Tech keywords (skills for reports) ─────────────────────
 
+// Only return these as "skills" for reports if they are clearly technical tools/languages
+// NOT generic topic words like "Cybersecurity", "Analytics", "Automation"
+const REPORT_SKILL_TERMS = [
+  'Python','JavaScript','TypeScript','Java','React','Node.js','TensorFlow','PyTorch',
+  'Kubernetes','Docker','AWS','Azure','GCP','SQL','MongoDB','PostgreSQL',
+  'Machine Learning','Deep Learning','Neural Network','Natural Language Processing',
+  'Computer Vision','Large Language Model','GPT-4','LLM','Transformer',
+  'Blockchain','IoT','5G','Quantum Computing','Data Science','Big Data',
+  'DevOps','Microservices','API','CI/CD','Cloud Computing',
+]
+
 function extractTechKeywords(text) {
-  const techTerms = [
-    'Artificial Intelligence','Machine Learning','Deep Learning','Neural Network',
-    'Natural Language Processing','Computer Vision','Reinforcement Learning',
-    'Large Language Model','Generative AI','ChatGPT','GPT-4','LLM','Transformer',
-    'Python','JavaScript','TypeScript','React','Node.js','TensorFlow','PyTorch',
-    'Kubernetes','Docker','AWS','Azure','GCP','Cloud Computing','Edge Computing',
-    'Blockchain','IoT','5G','Quantum Computing','Data Science','Big Data',
-    'Analytics','Automation','Cybersecurity','DevOps','Microservices','API',
-    'SaaS','PaaS','IaaS','Digital Transformation',
-  ]
   const found = new Set()
-  for (const term of techTerms) {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  for (const term of REPORT_SKILL_TERMS) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
     const regex = new RegExp('\\b' + escaped + '\\b', 'i')
     if (regex.test(text)) found.add(term)
   }
   return [...found].slice(0, 15)
 }
-
 // ─── Location extraction ─────────────────────────────────────
 
 function extractLocations(text) {
