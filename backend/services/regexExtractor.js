@@ -455,6 +455,10 @@ function extractGeneralPersons(text) {
     'Digital','Transformation','Adoption','Integration','Implementation',
     'Growth','Trends','Insights','Outlook','Forecast','Projection',
     'Quarter','Annual','Revenue','Profit','Loss','Investment','Capital',
+    // Location words that are not person names
+    'North','South','East','West','Central','Upper','Lower',
+    'United','States','Kingdom','European','Union','America','Asia',
+    'Pacific','Middle','Southeast','Africa','Atlantic','Indian','Ocean',
   ])
 
   const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b/g) || []
@@ -495,13 +499,19 @@ function extractTechKeywords(text) {
 function extractLocations(text) {
   const out = new Set()
   const locationPats = [
+    // Regions
     /\b(?:United States|United Kingdom|European Union|North America|South America|Asia Pacific|Middle East|Southeast Asia)\b/gi,
-    /\b(?:New York|San Francisco|Los Angeles|London|Tokyo|Beijing|Shanghai|Singapore|Dubai|Paris|Berlin|Sydney|Mumbai|Seoul)\b/gi,
-    /\b(?:California|Texas|Florida|Washington|Massachusetts|Illinois)\b/gi,
-    /\b(?:China|India|Japan|Germany|France|Canada|Australia|Brazil|South Korea|Taiwan)\b/gi,
+    // Major cities
+    /\b(?:New York|San Francisco|Los Angeles|London|Tokyo|Beijing|Shanghai|Singapore|Dubai|Paris|Berlin|Sydney|Mumbai|Seoul|Bangalore|Hyderabad|Chennai|Pune|Delhi|Kolkata|Boston|Seattle|Chicago|Austin|Toronto|Vancouver)\b/gi,
+    // US states
+    /\b(?:California|Texas|Florida|Washington|Massachusetts|Illinois|New York|Georgia|Ohio|Michigan|Pennsylvania|Arizona|Colorado|Nevada)\b/gi,
+    // Countries
+    /\b(?:China|India|Japan|Germany|France|Canada|Australia|Brazil|South Korea|Taiwan|United States|United Kingdom|Russia|Italy|Spain|Netherlands|Sweden|Switzerland)\b/gi,
+    // Address patterns: "City, State" or "City, Country"
+    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s+(?:[A-Z]{2}|[A-Z][a-z]+)\b/g,
   ]
   for (const p of locationPats) {
     for (const m of text.matchAll(p)) out.add(m[0].trim())
   }
-  return [...out].slice(0, 8)
+  return [...out].slice(0, 10)
 }

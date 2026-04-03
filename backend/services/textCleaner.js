@@ -102,8 +102,8 @@ export function isSectionHeading(line) {
   if (t.length > 50 || t.length < 2) return false
   const lower = t.toLowerCase().replace(/:$/, '')
   if (SECTION_HEADINGS.has(lower)) return true
-  // All-caps short line
-  if (/^[A-Z\s&/]+$/.test(t) && t.length < 35 && t.length > 2) return true
+  // All-caps short line — but NOT if it's a known acronym/org (≤6 chars like IBM, WHO, NASA)
+  if (/^[A-Z\s&/]+$/.test(t) && t.length >= 8 && t.length < 35 && t.split(/\s+/).length >= 2) return true
   return false
 }
 

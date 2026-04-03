@@ -63,7 +63,8 @@ Return ONLY valid JSON with this exact structure:
     "organizations": [],
     "locations": [],
     "skills": [],
-    "projects": []
+    "projects": [],
+    "monetary_amounts": []
   },
   "sentiment": "positive | neutral | negative"
 }
@@ -168,6 +169,7 @@ export async function runAIAnalysis(preparedText, docType) {
       locations: safeArr(ent.locations),
       skills: safeArr(ent.skills),
       projects: safeArr(ent.projects),
+      monetary_amounts: safeArr(ent.monetary_amounts),
     },
     sentiment: ['positive', 'neutral', 'negative'].includes(raw.sentiment) ? raw.sentiment : 'neutral',
   }

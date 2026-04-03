@@ -282,7 +282,11 @@ export function mergeAndValidate(regex, ai, docType) {
     phone_numbers: dedup(regex.phone_numbers || []).filter(isValidPhone).slice(0, 5),
     urls: dedup(regex.urls || []).filter(isValidURL).slice(0, 15),
     dates: dedup(regex.dates || []).filter(isValidGeneric).slice(0, 25),
-    monetary_amounts: dedup(regex.monetary_amounts || []).filter(isValidGeneric).slice(0, 15),
+    // Merge regex + AI monetary amounts for best coverage
+    monetary_amounts: dedup([
+      ...(regex.monetary_amounts || []),
+      ...(aiEnt.monetary_amounts || []),
+    ]).filter(isValidGeneric).slice(0, 15),
     persons: [],
     organizations: [],
     locations: cleanArr([...(regex.locations || []), ...(aiEnt.locations || [])], isValidGeneric, 10),
@@ -311,8 +315,14 @@ export function mergeAndValidate(regex, ai, docType) {
     merged.invoice_numbers = [] // NEVER for resumes
 
   } else if (docType === 'invoice' || docType === 'receipt') {
-    merged.persons = cleanArr(aiEnt.persons || [], isValidPerson, 5)
-    merged.organizations = cleanArr(aiEnt.organizations || [], isValidOrganization, 10)
+    merged.persons = cleanArr(
+      [...(regex.persons || []), ...(aiEnt.persons || [])],
+      isValidPerson, 5
+    )
+    merged.organizations = cleanArr(
+      [...(regex.organizations || []), ...(aiEnt.organizations || [])],
+      isValidOrganization, 10
+    )
     merged.invoice_numbers = dedup(regex.invoice_numbers || []).filter(isValidGeneric).slice(0, 5)
     merged.skills = []
     merged.projects = []

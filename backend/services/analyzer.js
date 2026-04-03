@@ -138,6 +138,30 @@ export async function analyzeDocument(file, onProgress) {
  * Used when AI summary is unavailable or rejected.
  */
 function buildBodySummary(bodyText, docType) {
+  // For invoices — try to build a structured summary from key fields
+  if (docType === 'invoice' || docType === 'receipt') {
+    const lines = bodyText.split('\n').map(l => l.trim()).filter(Boolean)
+    const parts = []
+    // Look for vendor/client
+    for (const line of lines.slice(0, 20)) {
+      if (/(?:from|vendor|issued by|company)[:\s]+(.+)/i.test(line)) {
+        parts.push(line); break
+      }
+    }
+    for (const line of lines.slice(0, 20)) {
+      if (/(?:bill to|client|customer)[:\s]+(.+)/i.test(line)) {
+        parts.push(line); break
+      }
+    }
+    // Look for total
+    for (const line of lines) {
+      if (/(?:total|amount due|grand total)[:\s]+.+/i.test(line)) {
+        parts.push(line); break
+      }
+    }
+    if (parts.length >= 2) return parts.join('. ').trim()
+  }
+
   const sentences = bodyText.match(/[^.!?]+[.!?]+/g) || []
   const good = sentences
     .map(s => s.trim())
@@ -149,12 +173,10 @@ function buildBodySummary(bodyText, docType) {
     .filter(s => !/github|linkedin|leetcode/i.test(s))
     .filter(s => (s.match(/[|–—]/g) || []).length < 3)
 
-  // Take up to 3 sentences for a richer summary
   if (good.length >= 3) return good.slice(0, 3).join(' ').trim()
   if (good.length >= 2) return good.slice(0, 2).join(' ').trim()
   if (good.length === 1) return good[0].trim()
 
-  // Last resort: take first meaningful lines from body
   const lines = bodyText.split('\n').map(l => l.trim()).filter(l => l.length > 30)
   if (lines.length >= 2) return lines.slice(0, 2).join(' ').trim()
   if (lines.length === 1) return lines[0]

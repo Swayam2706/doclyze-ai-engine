@@ -124,11 +124,14 @@ function validateOrganizations(arr) {
 
 function validateAmounts(arr) {
   return cleanAndFilter(arr, val => {
-    // Accept currency symbols (including unicode variants that survived)
+    // Has currency symbol
     if (/[$₹€£¥\u20B9\u20AC\u00A3\u00A5]/.test(val)) return true
+    // Has currency code + digits
     if (/\b(USD|INR|EUR|GBP|JPY|AUD|CAD)\b/i.test(val) && /\d/.test(val)) return true
-    // Accept plain number amounts that look like money (e.g. "5,750.00")
+    // Plain decimal amount like "5,750.00"
     if (/^\d[\d,]*\.\d{2}$/.test(val.trim())) return true
+    // Context-label amounts like "Total: $5,750" — extract the numeric part
+    if (/\d/.test(val) && /[$₹€£¥]/.test(val)) return true
     return false
   })
 }
