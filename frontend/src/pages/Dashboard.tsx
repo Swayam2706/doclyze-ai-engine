@@ -8,6 +8,7 @@ import {
   ExternalLink, AlertTriangle, RefreshCw,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
+import { Footer } from '@/components/Footer'
 import { AnalysisResult } from '@/lib/api'
 import { formatFileSize } from '@/lib/utils'
 
@@ -116,25 +117,33 @@ export default function Dashboard() {
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '72px 72px' }} />
 
       {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6"
-        style={{ background: 'rgba(7,7,15,0.92)', borderBottom: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(14px)' }}>
-        <Logo size="md" linkTo="/" />
-        <div className="flex items-center gap-2.5">
-          <button onClick={() => { resetAll(); nav('/') }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors"
-            style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
-            <Plus className="h-3.5 w-3.5" /> Analyze Another
-          </button>
-          <button onClick={downloadReport}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all"
-            style={{ background: 'linear-gradient(135deg, #5e3aee, #6366f1)', boxShadow: '0 2px 12px rgba(99,102,241,0.25)' }}>
-            <Download className="h-3.5 w-3.5" /> Download Report
-          </button>
+      <nav className="fixed top-0 left-0 right-0 z-50"
+        style={{
+          height: '64px',
+          background: 'rgba(10,10,20,0.75)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+          <Logo size="md" linkTo="/" />
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => { resetAll(); nav('/') }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors"
+              style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+              <Plus className="h-3.5 w-3.5" /> Analyze Another
+            </button>
+            <button onClick={downloadReport}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all"
+              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)', boxShadow: '0 2px 12px rgba(99,102,241,0.25)' }}>
+              <Download className="h-3.5 w-3.5" /> Download Report
+            </button>
+          </div>
         </div>
       </nav>
 
       {/* ── Page ── */}
-      <div className="relative z-10 pt-20 pb-16 px-4 sm:px-6">
+      <div className="relative z-10 pt-16 pb-16 px-4 sm:px-6">
         <div className="max-w-[1280px] mx-auto">
 
           {/* ── Error state ── */}
@@ -469,6 +478,7 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

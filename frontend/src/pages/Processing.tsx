@@ -168,37 +168,45 @@ export default function Processing() {
       ))}
 
       {/* ── TOP NAVBAR ── */}
-      <nav className="relative z-50 flex items-center justify-between px-6 h-14 shrink-0" style={{ background: 'rgba(10,10,20,0.7)', borderBottom: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)' }}>
-        {/* Left: Logo */}
-        <Logo size="sm" linkTo="/" />
+      <nav className="relative z-50 shrink-0" style={{
+        height: '64px',
+        background: 'rgba(10,10,20,0.75)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+          {/* Left: Logo */}
+          <Logo size="md" linkTo="/" />
 
-        {/* Center: dynamic status */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <motion.span className="h-[6px] w-[6px] rounded-full bg-[#22c55e]"
-            animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
-          <span className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            {statusText}
-          </span>
-        </div>
+          {/* Center: dynamic status */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <motion.span className="h-[6px] w-[6px] rounded-full bg-[#22c55e]"
+              animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
+            <span className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              {statusText}
+            </span>
+          </div>
 
-        {/* Right: progress % + cancel */}
-        <div className="flex items-center gap-4">
-          <span className="text-[13px] font-bold tabular-nums" style={{ color: '#6366f1' }}>
-            {Math.floor(progress)}%
-          </span>
-          {!showCancel ? (
-            <button onClick={() => setShowCancel(true)}
-              className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg transition-colors"
-              style={{ color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
-              <X className="h-3.5 w-3.5" /> Cancel
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Cancel analysis?</span>
-              <button onClick={handleCancel} className="text-[11px] px-2.5 py-1 rounded bg-destructive/80 text-white">Yes</button>
-              <button onClick={() => setShowCancel(false)} className="text-[11px] px-2.5 py-1 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>No</button>
-            </div>
-          )}
+          {/* Right: progress % + cancel */}
+          <div className="flex items-center gap-4">
+            <span className="text-[13px] font-bold tabular-nums" style={{ color: '#6366f1' }}>
+              {Math.floor(progress)}%
+            </span>
+            {!showCancel ? (
+              <button onClick={() => setShowCancel(true)}
+                className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg transition-colors"
+                style={{ color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+                <X className="h-3.5 w-3.5" /> Cancel
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Cancel analysis?</span>
+                <button onClick={handleCancel} className="text-[11px] px-2.5 py-1 rounded bg-destructive/80 text-white">Yes</button>
+                <button onClick={() => setShowCancel(false)} className="text-[11px] px-2.5 py-1 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)' }}>No</button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 

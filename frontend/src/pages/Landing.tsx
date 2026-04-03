@@ -361,7 +361,7 @@ export default function Landing() {
       </div>
 
       {/* ── Hero ── */}
-      <section className="relative min-h-screen pt-24 pb-16 overflow-hidden">
+      <section className="relative min-h-screen pt-16 pb-16 overflow-hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
           {/* Premium glass container wrapping all hero content */}

@@ -199,7 +199,7 @@ base64 -i document.pdf -o document_b64.txt
     <div className="min-h-screen" style={{ background: '#07070f' }}>
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)', backgroundSize: '72px 72px' }} />
       <Navbar />
-      <div className="relative z-10 pt-24 pb-16">
+      <div className="relative z-10 pt-16 pb-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-12">
 
