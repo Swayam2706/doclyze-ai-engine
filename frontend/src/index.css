@@ -147,3 +147,8 @@ html { scroll-behavior: smooth; }
   from { stroke-dashoffset: 0; }
   to   { stroke-dashoffset: -100; }
 }
+
+@keyframes premiumShimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
+}

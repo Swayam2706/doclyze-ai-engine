@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from './Logo'
+import { PremiumButton } from './PremiumButton'
 
 export function Navbar() {
   const location = useLocation()
@@ -7,11 +8,8 @@ export function Navbar() {
 
   const handleAnalyze = () => {
     if (location.pathname === '/') {
-      // Scroll to upload section on landing page
       const el = document.getElementById('upload-section')
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' })
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth' })
     } else {
       navigate('/')
     }
@@ -40,35 +38,14 @@ export function Navbar() {
               className="text-sm font-medium transition-all duration-200 relative group"
               style={{ color: 'rgba(255,255,255,0.55)' }}
             >
-              <span className="group-hover:text-white transition-colors duration-200">
-                API Docs
-              </span>
-              {/* Underline animation */}
+              <span className="group-hover:text-white transition-colors duration-200">API Docs</span>
               <span
                 className="absolute -bottom-0.5 left-0 w-0 group-hover:w-full transition-all duration-200 rounded-full"
                 style={{ height: '1px', background: 'rgba(99,102,241,0.7)' }}
               />
             </Link>
 
-            <button
-              onClick={handleAnalyze}
-              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200 active:scale-95"
-              style={{
-                background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
-                color: '#fff',
-                boxShadow: '0 0 0 0 rgba(99,102,241,0)',
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 20px rgba(99,102,241,0.35)'
-                ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 0 rgba(99,102,241,0)'
-                ;(e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'
-              }}
-            >
-              Analyze
-            </button>
+            <PremiumButton onClick={handleAnalyze} size="sm">Analyze</PremiumButton>
           </div>
         </div>
       </div>

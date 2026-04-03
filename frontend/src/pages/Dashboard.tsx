@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { Footer } from '@/components/Footer'
+import { PremiumButton } from '@/components/PremiumButton'
 import { AnalysisResult } from '@/lib/api'
 import { formatFileSize } from '@/lib/utils'
 
@@ -204,16 +205,18 @@ export default function Dashboard() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
           <Logo size="md" linkTo="/" />
           <div className="flex items-center gap-2.5">
-            <button onClick={() => { resetAll(); nav('/') }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors"
-              style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+            <PremiumButton
+              size="sm"
+              onClick={() => { resetAll(); nav('/') }}
+            >
               <Plus className="h-3.5 w-3.5" /> Analyze Another
-            </button>
-            <button onClick={downloadReport}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all"
-              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)', boxShadow: '0 2px 12px rgba(99,102,241,0.25)' }}>
+            </PremiumButton>
+            <PremiumButton
+              size="sm"
+              onClick={downloadReport}
+            >
               <Download className="h-3.5 w-3.5" /> Download Report
-            </button>
+            </PremiumButton>
           </div>
         </div>
       </nav>
