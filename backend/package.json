@@ -1,0 +1,29 @@
+{
+  "name": "doclyze-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "canvas": "^3.2.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "mammoth": "^1.6.0",
+    "mongoose": "^8.1.1",
+    "multer": "^1.4.5-lts.1",
+    "pdf-parse": "^1.1.1",
+    "pdf2pic": "^3.2.0",
+    "pdfjs-dist": "^5.6.205",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^5.0.4"
+  }
+}
