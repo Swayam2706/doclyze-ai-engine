@@ -6,13 +6,6 @@ import { api } from '@/lib/api'
 import { Logo } from '@/components/Logo'
 
 const LABELS = ['Extracting text','OCR Processing','Identifying entities','Analyzing sentiment','Generating summary']
-const MSGS = [
-  'Extracting readable text from your document',
-  'Running OCR — detecting structure and layout',
-  'Identifying key entities like names, dates, and organizations',
-  'Analyzing the overall tone and sentiment',
-  'Generating a concise AI summary of the document',
-]
 const STEP_RANGES = [[0,20],[20,40],[40,60],[60,80],[80,100]]
 
 const AI_MESSAGES = [
