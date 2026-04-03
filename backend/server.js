@@ -33,7 +33,7 @@ function rateLimit(windowMs = 60000, max = 60) {
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-api-key', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'x-api-key', 'Authorization', 'x-job-id'],
 }))
 app.options('*', cors())
 
