@@ -135,24 +135,43 @@ export function classifySentiment(text, docType) {
 
   const lower = text.toLowerCase()
 
+  // Strong negative signals — incident/breach/fraud reports
+  const strongNegative = [
+    'data breach','security breach','cyber attack','ransomware','phishing',
+    'unauthorized access','data leak','data exposure','compromised',
+    'vulnerability exploited','malware','ddos','denial of service',
+    'fraud alert','fraudulent','identity theft','financial fraud',
+    'money laundering','scam','ponzi','embezzlement',
+    'lawsuit filed','legal action','court order','injunction',
+    'regulatory violation','non-compliance','penalty imposed','fine issued',
+    'suspended operations','service disruption','system outage',
+    'critical vulnerability','zero-day','exploit','hacked',
+  ]
+  for (const phrase of strongNegative) {
+    if (lower.includes(phrase)) return 'negative'
+  }
+
   const positiveWords = [
-    'excellent', 'outstanding', 'great', 'good', 'success', 'successful',
-    'growth', 'increase', 'improved', 'improvement', 'profit', 'gain',
-    'achievement', 'award', 'innovation', 'innovative', 'opportunity',
-    'benefit', 'advantage', 'positive', 'strong', 'leading', 'best',
-    'record', 'milestone', 'breakthrough', 'advance', 'progress',
-    'efficient', 'effective', 'productive', 'thriving', 'expanding',
-    'optimistic', 'promising', 'favorable', 'robust', 'healthy',
+    'excellent','outstanding','great','good','success','successful',
+    'growth','increase','improved','improvement','profit','gain',
+    'achievement','award','innovation','innovative','opportunity',
+    'benefit','advantage','positive','strong','leading','best',
+    'record','milestone','breakthrough','advance','progress',
+    'efficient','effective','productive','thriving','expanding',
+    'optimistic','promising','favorable','robust','healthy',
+    'launched','released','announced','partnership','collaboration',
   ]
 
   const negativeWords = [
-    'failed', 'failure', 'loss', 'decline', 'decrease', 'problem',
-    'issue', 'concern', 'risk', 'threat', 'warning', 'penalty',
-    'violation', 'breach', 'dispute', 'complaint', 'reject', 'rejected',
-    'terminated', 'cancellation', 'delay', 'deficit', 'debt', 'crisis',
-    'poor', 'weak', 'inadequate', 'insufficient', 'critical', 'severe',
-    'urgent', 'immediate action', 'non-compliance', 'overdue', 'default',
-    'lawsuit', 'legal action', 'fine', 'sanction', 'suspension',
+    'failed','failure','loss','decline','decrease','problem',
+    'issue','concern','risk','threat','warning','penalty',
+    'violation','breach','dispute','complaint','reject','rejected',
+    'terminated','cancellation','delay','deficit','debt','crisis',
+    'poor','weak','inadequate','insufficient','critical','severe',
+    'urgent','immediate action','non-compliance','overdue','default',
+    'lawsuit','legal action','fine','sanction','suspension',
+    'attack','incident','exposed','leaked','stolen','compromised',
+    'disruption','outage','downtime','damage','harm','victim',
   ]
 
   let posScore = 0, negScore = 0
@@ -160,7 +179,7 @@ export function classifySentiment(text, docType) {
   for (const w of negativeWords) { if (lower.includes(w)) negScore++ }
 
   if (posScore > negScore + 2) return 'positive'
-  if (negScore > posScore + 1) return 'negative'
+  if (negScore > posScore) return 'negative'  // lower threshold for negative
   return 'neutral'
 }
 

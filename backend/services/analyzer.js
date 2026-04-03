@@ -55,7 +55,10 @@ export async function analyzeDocument(file, onProgress) {
     emit(2, 'Identifying entities with pattern matching')
     console.log('  [4/7] Regex extraction...')
     const regexEnt = extractDeterministicEntities(rawText, cleaned, docType)
-    console.log(`        emails=${regexEnt.emails.length} phones=${regexEnt.phone_numbers.length} urls=${regexEnt.urls.length} dates=${regexEnt.dates.length} skills=${(regexEnt.skills||[]).length} projects=${(regexEnt.projects||[]).length} orgs=${(regexEnt.organizations||[]).length}`)
+    console.log(`        emails=${regexEnt.emails.length} phones=${regexEnt.phone_numbers.length} urls=${regexEnt.urls.length} dates=${regexEnt.dates.length} skills=${(regexEnt.skills||[]).length} projects=${(regexEnt.projects||[]).length} orgs=${(regexEnt.organizations||[]).length} locs=${(regexEnt.locations||[]).length}`)
+    if (regexEnt.organizations?.length) console.log(`        orgs: [${regexEnt.organizations.slice(0,5).join(', ')}]`)
+    if (regexEnt.persons?.length) console.log(`        persons: [${regexEnt.persons.join(', ')}]`)
+    if (regexEnt.locations?.length) console.log(`        locations: [${regexEnt.locations.slice(0,5).join(', ')}]`)
 
     // 6. AI
     emit(3, 'Analyzing sentiment and generating summary')
@@ -109,7 +112,8 @@ export async function analyzeDocument(file, onProgress) {
     }
 
     const ms = Date.now() - t0
-    console.log(`  [7/7] ✅ ${ms}ms | ${docType} | conf=${confidence}`)
+    console.log(`  [7/7] ✅ ${ms}ms | type=${docType} | conf=${confidence} | sentiment=${sentimentLabel}`)
+    console.log(`        final entities — persons:${entities.persons?.length||0} orgs:${entities.organizations?.length||0} locs:${entities.locations?.length||0} skills:${entities.skills?.length||0} dates:${entities.dates?.length||0} amounts:${entities.monetary_amounts?.length||0}`)
 
     return {
       success: true,

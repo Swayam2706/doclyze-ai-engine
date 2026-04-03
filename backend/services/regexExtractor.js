@@ -1,7 +1,7 @@
 ﻿/**
  * Deterministic Entity Extraction — regex & rules.
  * Authoritative for: emails, phones, URLs, dates, money, invoice numbers.
- * Type-specific logic for: persons, skills, projects, organizations.
+ * Type-specific: persons, skills, projects, organizations, locations.
  * All rules are GENERIC — no sample-specific values.
  */
 
@@ -19,6 +19,7 @@ function extractPhones(text) {
   const pats = [
     /\+?\d{1,3}[-.\s]?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g,
     /\(\d{3}\)\s?\d{3}[-.\s]?\d{4}/g,
+    /\b\d{10}\b/g,
   ]
   for (const p of pats) {
     for (const m of text.matchAll(p)) {
@@ -30,38 +31,73 @@ function extractPhones(text) {
 }
 
 function extractURLs(text) {
+  const out = new Set()
+  // Full URLs
   const full = text.match(/https?:\/\/[^\s<>"{}|\\^`\[\]),;]+/gi) || []
-  const bare = text.match(/(?:[a-z0-9\-]+\.)+[a-z]{2,}\/[\w\-./]+/gi) || []
-  const normalized = bare.filter(u => !u.startsWith('http')).map(u => 'https://' + u)
-  return [...new Set([...full, ...normalized])].slice(0, 15)
+  full.forEach(u => out.add(u))
+  // Bare domains with path: github.com/user, linkedin.com/in/user, ninalane.com
+  const barePats = [
+    /\b(?:github|linkedin|behance|dribbble|portfolio|twitter|instagram)\.com\/[^\s,;|]+/gi,
+    /\b[a-z0-9][a-z0-9\-]*\.[a-z]{2,}(?:\/[^\s,;|]*)?\b/gi,
+  ]
+  for (const p of barePats) {
+    for (const m of text.matchAll(p)) {
+      const u = m[0].trim().replace(/[.,;:)]+$/, '')
+      // Reject if it looks like a sentence fragment
+      if (u.includes(' ')) continue
+      if (/^(e\.g|i\.e|etc|vs|mr|ms|dr|prof)\./i.test(u)) continue
+      if (!out.has(u) && !out.has('https://' + u)) {
+        out.add('https://' + u)
+      }
+    }
+  }
+  // Remove URLs that are just email domains
+  const emails = extractEmails(text)
+  const emailDomains = new Set(emails.map(e => e.split('@')[1]))
+  return [...out].filter(u => {
+    const domain = u.replace(/^https?:\/\//, '').split('/')[0]
+    return !emailDomains.has(domain)
+  }).slice(0, 15)
 }
 
 function extractDates(text) {
   const out = new Set()
   const pats = [
+    // Full date ranges: "June 2020 – Present", "March 2017 – May 2020"
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\s*[–\-—]\s*(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}|[Pp]resent|[Cc]urrent|[Nn]ow)\b/gi,
+    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\s*[–\-—]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}|[Pp]resent|[Cc]urrent)\b/gi,
+    // Year ranges: "2020 – Present", "2018 – 2022"
+    /\b\d{4}\s*[–\-—]\s*(?:\d{4}|[Pp]resent|[Cc]urrent)\b/g,
+    // Numeric dates
     /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/g,
     /\b\d{4}-\d{2}-\d{2}\b/g,
+    // Full month + day + year
     /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
     /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b/gi,
+    // Month + year
     /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b/gi,
-    /\b\d{4}\s*[–\-—]\s*(?:\d{4}|[Pp]resent|[Cc]urrent)\b/g,
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\b/gi,
+    // Standalone years (last resort)
     /\b(?:20|19)\d{2}\b/g,
   ]
   for (const p of pats) {
     for (const m of text.matchAll(p)) out.add(m[0].trim())
   }
-  return [...out].slice(0, 25)
+  // Deduplicate: remove standalone years already covered by richer ranges
+  const all = [...out]
+  const rich = all.filter(d => d.length > 6) // anything longer than "2024"
+  const richYears = new Set(rich.flatMap(d => d.match(/\b\d{4}\b/g) || []))
+  return all.filter(d => {
+    if (d.length <= 4 && richYears.has(d)) return false // standalone year already in a range
+    return true
+  }).slice(0, 25)
 }
 
 function extractMoney(text) {
   const pats = [
-    // ASCII dollar + unicode currency symbols (?���?)
     /[$\u20B9\u20AC\u00A3\u00A5\u20A9]\s?[\d,]+(?:\.\d{1,2})?/g,
-    // Currency codes
     /(?:USD|INR|EUR|GBP|JPY|AUD|CAD)\s?[\d,]+(?:\.\d{1,2})?/gi,
-    // Plain amounts with currency word context
     /(?:Rs\.?|INR)\s?[\d,]+(?:\.\d{1,2})?/gi,
-    // Amounts like "5,750.00" that appear near Total/Amount labels
     /(?:Total|Amount|Due|Subtotal|Tax|Price|Cost|Fee|Charge|Balance)[:\s]+[$\u20B9\u20AC\u00A3\u00A5]?\s?[\d,]+(?:\.\d{1,2})?/gi,
   ]
   const out = new Set()
@@ -90,22 +126,85 @@ function extractInvoiceNumbers(text) {
 
 // ─── Resume: person name ────────────────────────────────────
 
+/**
+ * Extract candidate name from resume.
+ * Scans first 20 non-empty lines for a 2-3 word capitalized phrase
+ * that doesn't look like a heading, job title, or contact info.
+ */
 function extractPersonName(rawText) {
-  const { contactBlock } = extractContactBlock(rawText)
-  // The person name is the first contact-block line that is a name
-  for (const line of contactBlock) {
-    const t = line.trim()
+  const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean)
+  const scanLines = lines.slice(0, 20)
+
+  // Section/heading words that are NOT names
+  const headingWords = new Set([
+    'resume','cv','curriculum','vitae','profile','portfolio','contact',
+    'experience','education','skills','projects','certifications','summary',
+    'objective','about','references','achievements','awards','languages',
+    'interests','hobbies','declaration','qualifications','overview',
+  ])
+
+  // Job title indicator words — if a line contains these, it's a title not a name
+  const titleWords = /\b(engineer|developer|designer|manager|analyst|consultant|director|officer|specialist|coordinator|architect|lead|senior|junior|intern|associate|executive|president|founder|ceo|cto|cfo|vp|head|principal)\b/i
+
+  for (let i = 0; i < scanLines.length; i++) {
+    const t = scanLines[i]
+    if (!t || t.length < 3 || t.length > 60) continue
     if (/\d/.test(t)) continue
     if (/@/.test(t)) continue
     if (/https?:\/\/|\.com|\.org|\.net|\.io/i.test(t)) continue
-    if (t.split(/\s+/).length > 5 || t.split(/\s+/).length < 2) continue
+    if (/[|•·,;:]/. test(t)) continue  // contact separator lines
+    const words = t.split(/\s+/)
+    if (words.length < 2 || words.length > 4) continue
+    // All words must start with capital
+    if (!words.every(w => /^[A-Z]/.test(w))) continue
+    // No heading words
+    if (words.some(w => headingWords.has(w.toLowerCase()))) continue
+    // Not a job title line
+    if (titleWords.test(t)) continue
+    if (isSectionHeading(t)) continue
+    return t
+  }
+
+  // Fallback: use contact block
+  const { contactBlock } = extractContactBlock(rawText)
+  for (const line of contactBlock) {
+    const t = line.trim()
+    if (/\d/.test(t) || /@/.test(t)) continue
+    if (/https?:\/\/|\.com|\.org|\.net|\.io/i.test(t)) continue
+    const words = t.split(/\s+/)
+    if (words.length < 2 || words.length > 5) continue
+    if (!words.every(w => /^[A-Z]/.test(w))) continue
     if (isSectionHeading(t)) continue
     return t
   }
   return null
 }
 
-// ─── Resume: skills from labeled sections ───────────────────
+// ─── Resume: skills ─────────────────────────────────────────
+
+// Broad skill dictionary for context-based detection in prose
+const SKILL_DICTIONARY = new Set([
+  // Languages
+  'Python','JavaScript','TypeScript','Java','C++','C#','C','Go','Rust','Swift',
+  'Kotlin','PHP','Ruby','Scala','R','MATLAB','Perl','Shell','Bash','SQL','HTML','CSS',
+  // Frameworks/Libraries
+  'React','Angular','Vue','Node.js','Express','Django','Flask','FastAPI','Spring',
+  'Laravel','Rails','Next.js','Nuxt','Svelte','TensorFlow','PyTorch','Keras',
+  'Scikit-learn','Pandas','NumPy','OpenCV','Hugging Face',
+  // Tools/Platforms
+  'Git','GitHub','GitLab','Docker','Kubernetes','AWS','Azure','GCP','Firebase',
+  'MongoDB','PostgreSQL','MySQL','Redis','Elasticsearch','Kafka','RabbitMQ',
+  'Terraform','Ansible','Jenkins','CircleCI','Jira','Confluence','Figma',
+  'Photoshop','Illustrator','InDesign','Sketch','After Effects','Premiere Pro',
+  'Adobe Creative Suite','Adobe XD','Canva','Blender','AutoCAD',
+  // Concepts
+  'Machine Learning','Deep Learning','Data Science','Computer Vision',
+  'Natural Language Processing','Artificial Intelligence','DevOps','Agile','Scrum',
+  'REST API','GraphQL','Microservices','CI/CD','Cloud Computing','Blockchain',
+  'Cybersecurity','Data Analysis','Web Design','UI/UX','Product Design',
+  'SEO','Digital Marketing','Social Media','Content Strategy','Copywriting',
+  'Project Management','Leadership','Communication',
+])
 
 function extractSkillsFromSections(text) {
   const lines = text.split('\n')
@@ -113,16 +212,16 @@ function extractSkillsFromSections(text) {
   let inSkillSection = false
 
   const skillHeaders = [
-    'technical skills', 'skills', 'core competencies', 'key skills',
-    'technologies', 'tools', 'frameworks',
+    'technical skills','skills','core competencies','key skills',
+    'technologies','tools','frameworks','software','expertise',
+    'proficiencies','competencies','capabilities',
   ]
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     const lower = line.toLowerCase().replace(/:$/, '')
 
-    // Detect skill section start
-    if (skillHeaders.some(h => lower === h || lower.startsWith(h + ' '))) {
+    if (skillHeaders.some(h => lower === h || lower.startsWith(h + ':') || lower.startsWith(h + ' '))) {
       inSkillSection = true
       const afterColon = line.split(':').slice(1).join(':').trim()
       if (afterColon) splitSkillLine(afterColon).forEach(s => skills.add(s))
@@ -130,79 +229,223 @@ function extractSkillsFromSections(text) {
     }
 
     if (inSkillSection) {
-      // Stop at next non-skill section heading
-      if (isSectionHeading(line)) { inSkillSection = false; continue }
+      if (isSectionHeading(line) && !skillHeaders.some(h => lower.includes(h))) {
+        inSkillSection = false; continue
+      }
       if (line === '') continue
-
-      // Detect labeled sub-lines like "Languages: Java, C++"
       const colonIdx = line.indexOf(':')
-      if (colonIdx > 0 && colonIdx < 30) {
+      if (colonIdx > 0 && colonIdx < 35) {
         const label = line.substring(0, colonIdx).trim().toLowerCase()
         const validLabels = [
-          'languages', 'core', 'frontend', 'backend', 'databases',
-          'tools', 'frameworks', 'devops', 'cloud', 'testing',
-          'other', 'programming', 'web', 'mobile',
+          'languages','core','frontend','backend','databases','tools','frameworks',
+          'devops','cloud','testing','other','programming','web','mobile','design',
+          'software','platforms','libraries','skills','technologies',
         ]
         if (validLabels.some(v => label.includes(v))) {
           splitSkillLine(line.substring(colonIdx + 1)).forEach(s => skills.add(s))
           continue
         }
       }
-
-      // Otherwise treat entire line as comma-separated skills
       splitSkillLine(line).forEach(s => skills.add(s))
     }
   }
 
-  return [...skills].filter(s => s.length > 1 && s.length < 50)
+  // Also scan full text for known skill dictionary matches
+  for (const skill of SKILL_DICTIONARY) {
+    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp('\\b' + escaped + '\\b', 'i')
+    if (regex.test(text)) skills.add(skill)
+  }
+
+  return [...skills]
+    .map(s => s.trim())
+    .filter(s => s.length > 1 && s.length < 50)
+    .filter(s => !isSectionHeading(s))
+    .slice(0, 35)
 }
 
 function splitSkillLine(line) {
   return line
-    .split(/[,|;\u2022\u00B7\u25AA\u25BA\u25CF\u25CB\u25E6]/)
+    .split(/[,|;\u2022\u00B7\u25AA\u25BA\u25CF\u25CB\u25E6\/]/)
     .map(s => s.replace(/^\s*[-\u2013\u2014\u2015]\s*/, '').trim())
     .filter(s => s.length > 1 && s.length < 50)
     .filter(s => !isSectionHeading(s))
 }
 
-// ─── Resume: projects from Projects section ─────────────────
+// ─── Resume: experience section parsing ─────────────────────
 
-function extractProjectsFromSection(text) {
+/**
+ * Parse experience section to extract organizations and locations.
+ * Handles patterns like:
+ *   "Brightline Agency | New York, NY"
+ *   "Google — Mountain View, CA"
+ *   "Acme Corp, San Francisco"
+ */
+function extractFromExperienceSection(text) {
   const lines = text.split('\n')
-  let inProjectSection = false
-  const projects = []
+  const orgs = new Set()
+  const locs = new Set()
+  let inExpSection = false
+
+  const expHeaders = [
+    'experience','work experience','professional experience','employment',
+    'employment history','work history','career','positions',
+  ]
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     const lower = line.toLowerCase().replace(/:$/, '')
 
-    // Detect project section start
-    if (['projects', 'personal projects', 'academic projects'].includes(lower)) {
-      inProjectSection = true
-      continue
+    if (expHeaders.some(h => lower === h || lower.startsWith(h + ':') || lower.startsWith(h + ' '))) {
+      inExpSection = true; continue
     }
 
-    if (inProjectSection) {
-      // Stop at next major section
-      if (isSectionHeading(line) && !lower.includes('project')) {
-        inProjectSection = false
+    if (inExpSection) {
+      if (isSectionHeading(line) && !expHeaders.some(h => lower.includes(h))) {
+        inExpSection = false; continue
+      }
+      if (!line) continue
+
+      // Pattern: "Org | Location" or "Org — Location" or "Org, City, State"
+      const pipeSplit = line.match(/^([^|–—,]+?)\s*[|–—]\s*(.+)$/)
+      if (pipeSplit) {
+        const left = pipeSplit[1].trim()
+        const right = pipeSplit[2].trim()
+        if (left.length > 2 && left.length < 80 && /^[A-Z]/.test(left) && !isSectionHeading(left)) {
+          orgs.add(left)
+        }
+        // Right side may be "City, State" or just a location
+        if (right.length > 2 && right.length < 60) {
+          locs.add(right.replace(/[,\s]+$/, '').trim())
+        }
         continue
       }
-      if (line === '') continue
 
-      // Skip bullet-point description lines
+      // Pattern: company name on its own line (capitalized, short, no action verbs)
+      if (
+        /^[A-Z]/.test(line) &&
+        line.length > 3 && line.length < 60 &&
+        line.split(/\s+/).length <= 6 &&
+        !isSectionHeading(line) &&
+        !/^(Developed|Built|Created|Designed|Managed|Led|Worked|Collaborated|Achieved|Responsible|Assisted)\b/i.test(line)
+      ) {
+        // Check if next line looks like a date range (role timeline)
+        const nextLine = lines[i + 1]?.trim() || ''
+        if (/\d{4}/.test(nextLine) || /present|current/i.test(nextLine)) {
+          orgs.add(line)
+        }
+      }
+    }
+  }
+
+  return { orgs: [...orgs], locs: [...locs] }
+}
+
+// ─── Resume: education section parsing ──────────────────────
+
+/**
+ * Parse education section to extract institutions and locations.
+ * Handles patterns like:
+ *   "Parsons School of Design | New York, NY"
+ *   "University of California, Berkeley"
+ */
+function extractFromEducationSection(text) {
+  const lines = text.split('\n')
+  const orgs = new Set()
+  const locs = new Set()
+  let inEduSection = false
+
+  const eduHeaders = [
+    'education','academic background','academic qualifications',
+    'educational background','academics','qualifications',
+  ]
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    const lower = line.toLowerCase().replace(/:$/, '')
+
+    if (eduHeaders.some(h => lower === h || lower.startsWith(h + ':') || lower.startsWith(h + ' '))) {
+      inEduSection = true; continue
+    }
+
+    if (inEduSection) {
+      if (isSectionHeading(line) && !eduHeaders.some(h => lower.includes(h))) {
+        inEduSection = false; continue
+      }
+      if (!line) continue
+
+      // Pattern: "Institution | Location"
+      const pipeSplit = line.match(/^([^|–—]+?)\s*[|–—]\s*(.+)$/)
+      if (pipeSplit) {
+        const inst = pipeSplit[1].trim()
+        const loc = pipeSplit[2].trim()
+        if (inst.length > 4 && /^[A-Z]/.test(inst) && !isSectionHeading(inst)) {
+          orgs.add(inst)
+        }
+        if (loc.length > 2) locs.add(loc.replace(/[,\s]+$/, '').trim())
+        continue
+      }
+
+      // Institution name patterns
+      const instPats = [
+        /(?:University|Institute|College|School|Academy)\s+(?:of\s+)?[A-Z][\w\s,]+/gi,
+        /[A-Z][\w\s]+ (?:University|Institute|College|School|Academy|Polytechnic)/gi,
+      ]
+      for (const p of instPats) {
+        for (const m of line.matchAll(p)) {
+          const inst = m[0].trim().replace(/\d{4,}$/, '').replace(/,\s*$/, '').trim()
+          if (inst.length > 5 && inst.length < 100) orgs.add(inst)
+        }
+      }
+    }
+  }
+
+  return { orgs: [...orgs], locs: [...locs] }
+}
+
+// ─── Resume: projects / portfolio ───────────────────────────
+
+function extractProjectsFromSection(text) {
+  const lines = text.split('\n')
+  let inSection = false
+  const projects = []
+
+  const sectionHeaders = [
+    'projects','personal projects','academic projects','portfolio',
+    'selected work','work samples','case studies','featured work',
+  ]
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    const lower = line.toLowerCase().replace(/:$/, '')
+
+    if (sectionHeaders.some(h => lower === h || lower.startsWith(h + ':') || lower.startsWith(h + ' '))) {
+      inSection = true; continue
+    }
+
+    if (inSection) {
+      if (isSectionHeading(line) && !sectionHeaders.some(h => lower.includes(h))) {
+        inSection = false; continue
+      }
+      if (!line) continue
       if (/^[\u2022\u00B7\u25AA\u25BA\u25CF\u25CB\u25E6]/.test(line)) continue
-      // Skip lines starting with action verbs (descriptions, not titles)
-      if (/^(Developed|Built|Created|Designed|Implemented|Used|Integrated|Managed|Led|Added|Utilized|Enabled|Deployed|Configured|Achieved|Reduced|Improved|Increased|Worked|Collaborated|Contributed)\b/i.test(line)) continue
+      if (/^(Developed|Built|Created|Designed|Implemented|Used|Integrated|Managed|Led|Worked|Collaborated|Contributed)\b/i.test(line)) continue
 
-      // Try to extract title from "Title – Description" pattern
+      // "Title — Description" or "Title for Client"
       const dashMatch = line.match(/^(.+?)\s*[–—\-|]\s*.+/)
       if (dashMatch) {
         const title = cleanProjectTitle(dashMatch[1])
         if (title) { projects.push(title); continue }
       }
 
-      // Short capitalized line = potential standalone title
+      // "Title for X" pattern
+      const forMatch = line.match(/^(.+?)\s+for\s+.+/i)
+      if (forMatch) {
+        const title = cleanProjectTitle(forMatch[1])
+        if (title) { projects.push(title); continue }
+      }
+
+      // Short capitalized standalone title
       if (line.length > 3 && line.length < 80 && /^[A-Z]/.test(line) && line.split(/\s+/).length <= 7) {
         const title = cleanProjectTitle(line)
         if (title) projects.push(title)
@@ -224,24 +467,23 @@ function cleanProjectTitle(raw) {
   if (t.split(/\s+/).length === 1 && t.length < 8) return null
   return t
 }
+
+// ─── Resume: organizations (education institutions) ──────────
+
 function extractOrganizations(text) {
   const out = new Set()
   const pats = [
-    /(?:University|Institute|College|School|Academy)\s+(?:of\s+)?[A-Z][\w\s,]+/gi,
-    /[A-Z][\w\s]+ (?:University|Institute|College|School|Academy)/gi,
+    /(?:University|Institute|College|School|Academy|Polytechnic)\s+(?:of\s+)?[A-Z][\w\s,]+/gi,
+    /[A-Z][\w\s]+ (?:University|Institute|College|School|Academy|Polytechnic)/gi,
   ]
   for (const p of pats) {
     for (const m of text.matchAll(p)) {
       let org = m[0].trim()
-      // Clean: remove leading digits/noise
-      org = org.replace(/^\d+\s*/, '')
-      // Remove trailing year or city merged without space (e.g. "Pune2023")
-      org = org.replace(/\d{4,}$/, '').trim()
-      // Remove trailing comma + city fragment
-      org = org.replace(/,\s*$/, '').trim()
-      if (org.length > 5 && org.length < 100 && !isSectionHeading(org)) {
-        out.add(org)
-      }
+        .replace(/^\d+\s*/, '')
+        .replace(/\d{4,}$/, '')
+        .replace(/,\s*$/, '')
+        .trim()
+      if (org.length > 5 && org.length < 100 && !isSectionHeading(org)) out.add(org)
     }
   }
   return [...out].slice(0, 10)
@@ -260,14 +502,32 @@ export function extractDeterministicEntities(rawText, cleanedText, docType) {
 
   if (docType === 'resume') {
     const personName = extractPersonName(rawText)
+    const expData = extractFromExperienceSection(cleanedText)
+    const eduData = extractFromEducationSection(cleanedText)
+    const eduOrgs = extractOrganizations(cleanedText)
+
+    // Merge all org sources
+    const allOrgs = [...new Set([
+      ...expData.orgs,
+      ...eduData.orgs,
+      ...eduOrgs,
+    ])]
+
+    // Merge all location sources
+    const allLocs = [...new Set([
+      ...expData.locs,
+      ...eduData.locs,
+      ...extractLocations(rawText),
+    ])]
+
     return {
       ...common,
       persons: personName ? [personName] : [],
-      organizations: extractOrganizations(cleanedText),
+      organizations: allOrgs.filter(o => o.length > 2 && o.length < 100 && !isSectionHeading(o)).slice(0, 12),
       skills: extractSkillsFromSections(cleanedText),
       projects: extractProjectsFromSection(cleanedText),
       invoice_numbers: [],
-      locations: [],
+      locations: allLocs.filter(l => l.length > 2).slice(0, 10),
     }
   }
 
@@ -283,7 +543,7 @@ export function extractDeterministicEntities(rawText, cleanedText, docType) {
     }
   }
 
-  // contract, report, letter, general — use AI + regex for persons/orgs
+  // report, article, letter, notice, contract, general
   return {
     ...common,
     persons: extractGeneralPersons(rawText),
@@ -295,14 +555,10 @@ export function extractDeterministicEntities(rawText, cleanedText, docType) {
   }
 }
 
-/**
- * Extract organizations from invoices/receipts.
- * Looks for vendor/client names near billing labels.
- */
+// ─── Invoice org extraction ──────────────────────────────────
+
 function extractInvoiceOrganizations(text) {
   const out = new Set()
-
-  // Labeled patterns: "Bill To: Acme Corp", "From: Nexus Ltd"
   const labelPats = [
     /(?:Bill\s+To|Billed\s+To|Client|Customer|Sold\s+To)[:\s]+([A-Z][A-Za-z0-9\s&.,'-]{2,50})/gi,
     /(?:From|Vendor|Supplier|Issued\s+By|Company)[:\s]+([A-Z][A-Za-z0-9\s&.,'-]{2,50})/gi,
@@ -314,8 +570,6 @@ function extractInvoiceOrganizations(text) {
       if (val.length > 2 && val.length < 80 && /^[A-Z]/.test(val)) out.add(val)
     }
   }
-
-  // Company suffix patterns
   const suffixPats = [
     /[A-Z][A-Za-z\s&]+ (?:Inc|Corp|LLC|Ltd|Co|Limited|Group|Holdings|Technologies|Solutions|Services|Systems|Pvt|Private)\.?/g,
     /[A-Z][A-Za-z\s]+ (?:Authority|Department|Ministry|Commission|Agency|Bureau|Office)/g,
@@ -326,33 +580,32 @@ function extractInvoiceOrganizations(text) {
       if (org.length > 4 && org.length < 80 && !isSectionHeading(org)) out.add(org)
     }
   }
-
   return [...out].filter(o => o.length > 2 && o.length < 80 && !/^\d/.test(o)).slice(0, 8)
 }
 
-/**
- * Extract person names from general documents.
- * Looks for 2-3 capitalized word sequences.
- */
+// ─── General org extraction ──────────────────────────────────
+
+const KNOWN_ORGS = [
+  'Google','Microsoft','Apple','Amazon','Meta','Facebook','Netflix','Tesla',
+  'NVIDIA','Intel','AMD','Qualcomm','IBM','Oracle','Salesforce','Adobe',
+  'SAP','Cisco','Dell','HP','Lenovo','Samsung','Sony','LG',
+  'OpenAI','Anthropic','DeepMind','Hugging Face','Stability AI','Cohere','Mistral',
+  'AWS','Azure','GCP','Cloudflare','Snowflake','Databricks',
+  'Goldman Sachs','JPMorgan','Morgan Stanley','BlackRock','Visa','Mastercard',
+  'PayPal','Stripe','Square','McKinsey','Deloitte','Accenture','PwC','KPMG','EY',
+  'Gartner','Forrester','IDC','Toyota','BMW','Mercedes','Ford','GM','Volkswagen',
+  'SpaceX','Boeing','Airbus','Lockheed','AT&T','Verizon','T-Mobile','Comcast',
+  'Disney','Twitter','LinkedIn','Uber','Lyft','Airbnb','Walmart','Target',
+  'Pfizer','Moderna','AstraZeneca','TSMC','Broadcom','Micron',
+  'United Nations','World Bank','IMF','WHO','NATO','European Union','Federal Reserve',
+  'Reserve Bank','Central Bank','Securities Commission','Financial Authority',
+]
+
 function extractGeneralOrganizations(text) {
   const out = new Set()
 
-  // Strategy 1: Known organization name scan
-  const knownOrgs = [
-    'Google','Microsoft','Apple','Amazon','Meta','Facebook','Netflix','Tesla',
-    'NVIDIA','Intel','AMD','Qualcomm','IBM','Oracle','Salesforce','Adobe',
-    'SAP','Cisco','Dell','HP','Lenovo','Samsung','Sony','LG',
-    'OpenAI','Anthropic','DeepMind','Hugging Face','Stability AI','Cohere','Mistral',
-    'AWS','Azure','GCP','Cloudflare','Snowflake','Databricks',
-    'Goldman Sachs','JPMorgan','Morgan Stanley','BlackRock','Visa','Mastercard',
-    'PayPal','Stripe','Square','McKinsey','Deloitte','Accenture','PwC','KPMG','EY',
-    'Gartner','Forrester','IDC','Toyota','BMW','Mercedes','Ford','GM','Volkswagen',
-    'SpaceX','Boeing','Airbus','Lockheed','AT&T','Verizon','T-Mobile','Comcast',
-    'Disney','Twitter','LinkedIn','Uber','Lyft','Airbnb','Walmart','Target',
-    'Pfizer','Moderna','AstraZeneca','TSMC','Broadcom','Micron',
-    'United Nations','World Bank','IMF','WHO','NATO','European Union','Federal Reserve',
-  ]
-  for (const org of knownOrgs) {
+  // Strategy 1: Known org scan
+  for (const org of KNOWN_ORGS) {
     const escaped = org.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const regex = new RegExp('\\b' + escaped + '\\b', 'i')
     if (regex.test(text)) {
@@ -361,35 +614,29 @@ function extractGeneralOrganizations(text) {
     }
   }
 
-  // Strategy 2: Context-phrase extraction — handles "X, Y, and Z" lists
+  // Strategy 2: Context-phrase extraction
   const contextPatterns = [
-    /(?:companies|firms|organizations|corporations|brands|players|giants|vendors|providers|platforms)\s+(?:such as|including|like|namely|as|:)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\.|,\s+(?:which|are|have|were)|$)/gi,
+    /(?:companies|firms|organizations|corporations|brands|players|giants|vendors|providers|platforms|institutions|banks|agencies|authorities|departments)\s+(?:such as|including|like|namely|as|:)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\.|,\s+(?:which|are|have|were)|$)/gi,
     /(?:including|such as|like|namely)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\s+(?:which|are|have|were|to|in|for|with|by)|[.;]|$)/gi,
+    /(?:affected|impacted|involved|targeted|breached|compromised)\s+(?:include|includes|are|were|:)\s+([A-Z][A-Za-z0-9\s&,.']+?)(?:\.|,\s+(?:and|which)|$)/gi,
   ]
   for (const p of contextPatterns) {
     for (const m of text.matchAll(p)) {
       const raw = (m[1] || m[0]).trim()
-      // Split on comma and " and " to catch all items in a list
       const parts = raw.split(/,\s*(?:and\s+)?|\s+and\s+/)
       for (const part of parts) {
         const cleaned = part.trim().replace(/[.,;:]+$/, '').trim()
-        if (cleaned.length > 1 && cleaned.length < 60 && /^[A-Z]/.test(cleaned)) {
-          out.add(cleaned)
-        }
+        if (cleaned.length > 1 && cleaned.length < 60 && /^[A-Z]/.test(cleaned)) out.add(cleaned)
       }
     }
   }
 
-  // Strategy 2b: Inline list pattern — "Google, Microsoft, and NVIDIA"
-  // Catches comma-separated org lists anywhere in text
+  // Strategy 2b: Inline comma list — "Google, Microsoft, and NVIDIA"
   const listPattern = /\b([A-Z][A-Za-z0-9]+)(?:,\s*([A-Z][A-Za-z0-9]+))+(?:,?\s+and\s+([A-Z][A-Za-z0-9]+))?/g
   for (const m of text.matchAll(listPattern)) {
-    // Only process if all items are known orgs or short single words (likely org names)
-    const fullMatch = m[0]
-    const items = fullMatch.split(/,\s*(?:and\s+)?|\s+and\s+/).map(s => s.trim()).filter(Boolean)
-    // Check if at least one item is a known org — if so, add all
-    const hasKnownOrg = items.some(item => knownOrgs.some(k => k.toLowerCase() === item.toLowerCase()))
-    if (hasKnownOrg) {
+    const items = m[0].split(/,\s*(?:and\s+)?|\s+and\s+/).map(s => s.trim()).filter(Boolean)
+    const hasKnown = items.some(item => KNOWN_ORGS.some(k => k.toLowerCase() === item.toLowerCase()))
+    if (hasKnown) {
       for (const item of items) {
         const clean = item.replace(/[.,;:]+$/, '').trim()
         if (clean.length > 1 && /^[A-Z]/.test(clean)) out.add(clean)
@@ -400,7 +647,7 @@ function extractGeneralOrganizations(text) {
   // Strategy 3: Company suffix patterns
   const suffixPats = [
     /[A-Z][A-Za-z\s&]+ (?:Inc|Corp|LLC|Ltd|Co|Limited|Group|Holdings|Technologies|Solutions|Services|Systems|Pvt|Private)\.?/g,
-    /[A-Z][A-Za-z\s]+ (?:Authority|Department|Ministry|Commission|Agency|Bureau|Office)/g,
+    /[A-Z][A-Za-z\s]+ (?:Authority|Department|Ministry|Commission|Agency|Bureau|Office|Bank|Fund|Exchange)/g,
   ]
   for (const p of suffixPats) {
     for (const m of text.matchAll(p)) {
@@ -411,8 +658,8 @@ function extractGeneralOrganizations(text) {
 
   // Strategy 4: Institution patterns
   const instPats = [
-    /(?:University|Institute|College|School|Academy)\s+(?:of\s+)?[A-Z][\w\s,]+/gi,
-    /[A-Z][\w\s]+ (?:University|Institute|College|School|Academy)/gi,
+    /(?:University|Institute|College|School|Academy|Polytechnic)\s+(?:of\s+)?[A-Z][\w\s,]+/gi,
+    /[A-Z][\w\s]+ (?:University|Institute|College|School|Academy|Polytechnic)/gi,
   ]
   for (const p of instPats) {
     for (const m of text.matchAll(p)) {
@@ -428,54 +675,55 @@ function extractGeneralOrganizations(text) {
     .slice(0, 15)
 }
 
+// ─── General person extraction ───────────────────────────────
+
+const PERSON_TOPIC_WORDS = new Set([
+  'The','This','That','These','Those','With','From','Into','Over','Under',
+  'About','After','Before','During','Through','Between','Among','Within',
+  'Without','According','Based','Using','Including','Such','Each','Both',
+  'Many','Most','Some','More','Less','Very','Also','Only','Just','Even',
+  'Still','Already','Always','Never','Often','Usually','Generally',
+  'Specifically','Particularly','Especially','However','Therefore',
+  'Furthermore','Moreover','Additionally','Consequently','Nevertheless',
+  'New','Old','Big','Small','Large','High','Low','Long','Short',
+  'First','Second','Third','Last','Next','Previous','Current',
+  'Global','Local','National','International','Digital','Virtual',
+  'Annual','Monthly','Weekly','Daily','Recent','Future','Past',
+  // Topic words
+  'Technology','Industry','Analysis','Innovation','Report','Market',
+  'Artificial','Intelligence','Machine','Learning','Data','Science',
+  'Business','Financial','Economic','Strategic','Corporate','Enterprise',
+  'Research','Development','Management','Operations','Performance',
+  'Overview','Summary','Review','Assessment','Evaluation','Study',
+  'Sector','Segment','Landscape','Ecosystem','Framework','Platform',
+  'Digital','Transformation','Adoption','Integration','Implementation',
+  'Growth','Trends','Insights','Outlook','Forecast','Projection',
+  'Quarter','Annual','Revenue','Profit','Loss','Investment','Capital',
+  // Location words
+  'North','South','East','West','Central','Upper','Lower',
+  'United','States','Kingdom','European','Union','America','Asia',
+  'Pacific','Middle','Southeast','Africa','Atlantic','Indian','Ocean',
+  // Incident/report words
+  'Cybersecurity','Incident','Breach','Attack','Fraud','Security',
+  'Vulnerability','Compliance','Regulatory','Investigation','Enforcement',
+])
+
 function extractGeneralPersons(text) {
   const out = new Set()
-
-  // Words that indicate a phrase is a topic/title, NOT a person name
-  const topicWords = new Set([
-    // Common stopwords
-    'The','This','That','These','Those','With','From','Into','Over','Under',
-    'About','After','Before','During','Through','Between','Among','Within',
-    'Without','According','Based','Using','Including','Such','Each','Both',
-    'Many','Most','Some','More','Less','Very','Also','Only','Just','Even',
-    'Still','Already','Always','Never','Often','Usually','Generally',
-    'Specifically','Particularly','Especially','However','Therefore',
-    'Furthermore','Moreover','Additionally','Consequently','Nevertheless',
-    'New','Old','Big','Small','Large','High','Low','Long','Short',
-    'First','Second','Third','Last','Next','Previous','Current',
-    'Global','Local','National','International','Digital','Virtual',
-    'Annual','Monthly','Weekly','Daily','Recent','Future','Past',
-    // Topic/industry words that appear in titles but not person names
-    'Technology','Industry','Analysis','Innovation','Report','Market',
-    'Artificial','Intelligence','Machine','Learning','Data','Science',
-    'Business','Financial','Economic','Strategic','Corporate','Enterprise',
-    'Research','Development','Management','Operations','Performance',
-    'Overview','Summary','Review','Assessment','Evaluation','Study',
-    'Sector','Segment','Landscape','Ecosystem','Framework','Platform',
-    'Digital','Transformation','Adoption','Integration','Implementation',
-    'Growth','Trends','Insights','Outlook','Forecast','Projection',
-    'Quarter','Annual','Revenue','Profit','Loss','Investment','Capital',
-    // Location words that are not person names
-    'North','South','East','West','Central','Upper','Lower',
-    'United','States','Kingdom','European','Union','America','Asia',
-    'Pacific','Middle','Southeast','Africa','Atlantic','Indian','Ocean',
-  ])
-
   const matches = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b/g) || []
   for (const m of matches) {
     const words = m.split(/\s+/)
-    // Reject if any word is a topic/stopword
-    if (words.some(w => topicWords.has(w))) continue
+    if (words.some(w => PERSON_TOPIC_WORDS.has(w))) continue
     if (m.length > 40) continue
     if (isSectionHeading(m)) continue
-    // Must look like a real name: each word starts with capital, rest lowercase
-    // Reject if any word is all-caps (acronym) or contains numbers
     if (words.some(w => /[0-9]/.test(w))) continue
     if (words.some(w => w === w.toUpperCase() && w.length > 2)) continue
     out.add(m)
   }
   return [...out].slice(0, 8)
 }
+
+// ─── Tech keywords (skills for reports) ─────────────────────
 
 function extractTechKeywords(text) {
   const techTerms = [
@@ -490,28 +738,37 @@ function extractTechKeywords(text) {
   ]
   const found = new Set()
   for (const term of techTerms) {
-    const regex = new RegExp('\\b' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i')
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp('\\b' + escaped + '\\b', 'i')
     if (regex.test(text)) found.add(term)
   }
   return [...found].slice(0, 15)
 }
 
+// ─── Location extraction ─────────────────────────────────────
+
 function extractLocations(text) {
   const out = new Set()
   const locationPats = [
-    // Regions
     /\b(?:United States|United Kingdom|European Union|North America|South America|Asia Pacific|Middle East|Southeast Asia)\b/gi,
-    // Major cities
-    /\b(?:New York|San Francisco|Los Angeles|London|Tokyo|Beijing|Shanghai|Singapore|Dubai|Paris|Berlin|Sydney|Mumbai|Seoul|Bangalore|Hyderabad|Chennai|Pune|Delhi|Kolkata|Boston|Seattle|Chicago|Austin|Toronto|Vancouver)\b/gi,
-    // US states
-    /\b(?:California|Texas|Florida|Washington|Massachusetts|Illinois|New York|Georgia|Ohio|Michigan|Pennsylvania|Arizona|Colorado|Nevada)\b/gi,
-    // Countries
-    /\b(?:China|India|Japan|Germany|France|Canada|Australia|Brazil|South Korea|Taiwan|United States|United Kingdom|Russia|Italy|Spain|Netherlands|Sweden|Switzerland)\b/gi,
-    // Address patterns: "City, State" or "City, Country"
-    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s+(?:[A-Z]{2}|[A-Z][a-z]+)\b/g,
+    /\b(?:New York|San Francisco|Los Angeles|London|Tokyo|Beijing|Shanghai|Singapore|Dubai|Paris|Berlin|Sydney|Mumbai|Seoul|Bangalore|Hyderabad|Chennai|Pune|Delhi|Kolkata|Boston|Seattle|Chicago|Austin|Toronto|Vancouver|Brooklyn|Manhattan)\b/gi,
+    /\b(?:California|Texas|Florida|Washington|Massachusetts|Illinois|New York|Georgia|Ohio|Michigan|Pennsylvania|Arizona|Colorado|Nevada|New Jersey)\b/gi,
+    /\b(?:China|India|Japan|Germany|France|Canada|Australia|Brazil|South Korea|Taiwan|United States|United Kingdom|Russia|Italy|Spain|Netherlands|Sweden|Switzerland|Singapore|UAE)\b/gi,
+    // "City, State/Country" patterns
+    /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s+(?:[A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/g,
   ]
   for (const p of locationPats) {
-    for (const m of text.matchAll(p)) out.add(m[0].trim())
+    for (const m of text.matchAll(p)) {
+      const loc = m[0].trim()
+      // Filter out false positives from "City, State" pattern
+      if (loc.includes(',')) {
+        const parts = loc.split(',').map(p => p.trim())
+        // Both parts should look like place names
+        if (parts.every(p => p.length > 1 && p.length < 30)) out.add(loc)
+      } else {
+        out.add(loc)
+      }
+    }
   }
   return [...out].slice(0, 10)
 }
