@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿/**
+﻿﻿﻿﻿﻿﻿﻿/**
  * Deterministic Entity Extraction — regex & rules.
  * Authoritative for: emails, phones, URLs, dates, money, invoice numbers.
  * Type-specific: persons, skills, projects, organizations, locations.
@@ -683,52 +683,76 @@ function extractGeneralOrganizations(text) {
 
 
   // Strategy 5: Prose institutional category extraction
-  // Catches generic institutional descriptions in reports like:
-  // "financial institutions", "banking platforms", "regulatory authorities"
+  // Uses a SEPARATE set (proseOrgs) that bypasses the SYNTHETIC_ORG_PREFIXES filter
+  // because these phrases are explicitly validated against source text.
+  const proseOrgs = new Set()
   const institutionalPhrases = [
+    // Financial sector
     /\b(financial\s+institutions?)\b/gi,
+    /\b(financial\s+service\s+providers?)\b/gi,
     /\b(banking\s+platforms?)\b/gi,
+    /\b(banking\s+systems?)\b/gi,
+    /\b(digital\s+banking\s+systems?)\b/gi,
     /\b(payment\s+service\s+providers?)\b/gi,
+    /\b(payment\s+platforms?)\b/gi,
+    /\b(payment\s+systems?)\b/gi,
+    /\b(investment\s+(?:banks?|firms?))\b/gi,
+    /\b(central\s+banks?)\b/gi,
+    /\b(insurance\s+(?:companies|providers?))\b/gi,
+    // Regulatory / government
     /\b(regulatory\s+authorit(?:y|ies))\b/gi,
     /\b(government\s+agenc(?:y|ies))\b/gi,
-    /\b(cybersecurity\s+(?:firms?|companies|researchers?|analysts?))\b/gi,
-    /\b(cloud\s+(?:providers?|platforms?|services?))\b/gi,
-    /\b(digital\s+(?:banks?|platforms?|payment\s+systems?))\b/gi,
     /\b(law\s+enforcement\s+agenc(?:y|ies))\b/gi,
-    /\b(central\s+banks?)\b/gi,
-    /\b(investment\s+(?:banks?|firms?))\b/gi,
-    /\b(insurance\s+(?:companies|providers?))\b/gi,
+    /\b(federal\s+agenc(?:y|ies))\b/gi,
+    /\b(national\s+authorit(?:y|ies))\b/gi,
+    // Technology / security
+    /\b(cybersecurity\s+(?:firms?|companies|researchers?|analysts?|teams?))\b/gi,
+    /\b(cloud\s+(?:providers?|platforms?|services?|infrastructure))\b/gi,
+    /\b(digital\s+(?:banks?|platforms?|payment\s+systems?|services?))\b/gi,
+    /\b(technology\s+(?:companies|firms?|providers?|platforms?))\b/gi,
+    /\b(software\s+(?:companies|firms?|providers?|vendors?))\b/gi,
+    // Healthcare / education / research
     /\b(healthcare\s+(?:providers?|institutions?|organizations?))\b/gi,
     /\b(educational\s+institutions?)\b/gi,
     /\b(research\s+institutions?)\b/gi,
+    // Generic institutional
+    /\b(service\s+providers?)\b/gi,
+    /\b(third.party\s+(?:vendors?|providers?|services?))\b/gi,
   ]
   for (const p of institutionalPhrases) {
     for (const m of text.matchAll(p)) {
       const phrase = m[0].trim()
-      // Capitalize first letter for consistency
-      const normalized = phrase.charAt(0).toUpperCase() + phrase.slice(1)
-      out.add(normalized)
+      const normalized = phrase.charAt(0).toUpperCase() + phrase.slice(1).toLowerCase()
+      proseOrgs.add(normalized)
     }
   }
-  return [...out]
+  // Log for debugging
+  if (proseOrgs.size > 0) {
+    console.log('  [Strategy5] prose institutional orgs:', [...proseOrgs].join(', '))
+  }
+  // Merge: proper-noun orgs (filtered) + prose institutional orgs (pre-validated)
+  const filteredOut = [...out]
     .filter(o => !isSectionHeading(o))
     .filter(o => o.length > 2 && o.length < 80)
     .filter(o => !/^\d/.test(o))
     .filter(o => {
-      // Reject if first word is a synthetic/topic prefix
+      // Reject if first word is a synthetic/topic prefix (prevents "Cybersecurity Inc")
       const firstWord = o.split(/\s+/)[0].toLowerCase()
       return !SYNTHETIC_ORG_PREFIXES.has(firstWord)
     })
     .filter(o => {
-      // Verbatim check only for proper-noun orgs (not generic institutional phrases)
-      // Context-extracted phrases like 'financial institutions' skip this check
+      // Verbatim check for proper-noun orgs only
       const words = o.split(/\s+/)
       const isProperNoun = /^[A-Z][a-z]/.test(o) && words.length <= 3
       if (!isProperNoun) return true
-      const escaped = o.replace(/[.*+?^${}()|[\]\\\\]/g, '\\\\$&')
-      return new RegExp('\\\\b' + escaped + '\\\\b', 'i').test(text)
+      const escaped = o.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+      return new RegExp('\\b' + escaped + '\\b', 'i').test(text)
     })
-    .slice(0, 15)
+
+  // proseOrgs bypass the prefix filter — they are already text-validated by Strategy 5
+  const allOrgs = [...new Set([...filteredOut, ...proseOrgs])]
+  console.log('  [extractGeneralOrgs] proper-noun:', filteredOut.length, '| prose:', proseOrgs.size, '| total:', allOrgs.length)
+  return allOrgs.slice(0, 15)
 }
 // ─── General person extraction ───────────────────────────────
 
