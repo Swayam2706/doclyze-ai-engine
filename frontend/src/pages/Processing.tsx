@@ -228,10 +228,10 @@ export default function Processing() {
 
       {/* ── MAIN CONTENT ── */}
       <div className="relative z-10 flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-[1200px] grid grid-cols-1 lg:grid-cols-[260px_1fr_360px] gap-6 items-start">
+        <div className="w-full max-w-[1200px] grid grid-cols-1 md:grid-cols-[220px_1fr] lg:grid-cols-[260px_1fr_360px] gap-4 sm:gap-6 items-start">
 
           {/* LEFT: File Context */}
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="hidden lg:block">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} className="hidden md:block">
             <div className="rounded-2xl p-5 space-y-4" style={{ background: 'rgba(20,20,35,0.7)', border: '1px solid rgba(100,100,180,0.15)', backdropFilter: 'blur(16px)', boxShadow: '0 4px 24px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset' }}>
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: badgeStyle.bg, border: `1px solid ${badgeStyle.border}` }}>
@@ -262,7 +262,7 @@ export default function Processing() {
 
           {/* CENTER: Processing Card */}
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <div className="rounded-2xl p-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(20,20,35,0.85) 0%, rgba(30,25,55,0.7) 100%)', border: '1px solid rgba(100,100,180,0.15)', boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)' }}>
+            <div className="rounded-2xl p-4 sm:p-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(20,20,35,0.85) 0%, rgba(30,25,55,0.7) 100%)', border: '1px solid rgba(100,100,180,0.15)', boxShadow: '0 25px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)' }}>
 
               {/* Header with fixed smooth spinner */}
               <div className="flex items-start gap-5 mb-10">
@@ -313,7 +313,7 @@ export default function Processing() {
                     <span className="text-[11px] font-bold tracking-[0.2em] uppercase" style={{ color: '#6366f1' }}>AI Processing</span>
                   </div>
                   <h2 className="text-[22px] font-bold text-white leading-tight">Processing your document</h2>
-                  <p className="text-[14px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>Extracting text, identifying entities, and generating<br />insights using AI.</p>
+                  <p className="text-[14px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)' }}>Extracting text, identifying entities, and generating insights using AI.</p>
                 </div>
               </div>
 

@@ -399,7 +399,7 @@ export default function Landing() {
             <div className="absolute inset-0 rounded-3xl pointer-events-none"
               style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(99,102,241,0.04) 0%, transparent 100%)' }} />
 
-          <div className="relative z-10 p-6 sm:p-10 grid gap-12 lg:grid-cols-2 lg:gap-10 items-center min-h-[calc(100vh-12rem)]">
+          <div className="relative z-10 p-4 sm:p-6 sm:p-10 grid gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-10 items-center min-h-[auto] lg:min-h-[calc(100vh-12rem)]">
 
             {/* Left: headline + upload card */}
             <motion.div
@@ -415,12 +415,12 @@ export default function Landing() {
                 </span>
               </div>
 
-              <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-6xl">
                 Turn Documents Into{' '}
                 <span className="text-primary">Intelligence</span>
               </h1>
 
-              <p className="mt-5 text-lg text-muted-foreground leading-relaxed max-w-xl">
+              <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl">
                 Extract summaries, entities, and insights from PDFs, DOCX, and images in seconds.
               </p>
 
@@ -515,7 +515,7 @@ export default function Landing() {
                       el.style.background = 'rgba(14,12,26,0.9)'
                     }}
                   >
-                    <div className="flex flex-col items-center justify-center py-12 px-8 text-center">
+                    <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-8 text-center">
                       {/* Icon */}
                       <div
                         className="h-12 w-12 rounded-xl flex items-center justify-center mb-5"

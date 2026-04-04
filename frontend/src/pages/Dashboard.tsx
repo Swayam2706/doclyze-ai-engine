@@ -247,7 +247,7 @@ export default function Dashboard() {
 
                 {/* ── Status strip ── */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl px-5 py-4 flex items-center gap-4 flex-wrap"
+                  className="rounded-xl px-4 sm:px-5 py-4 flex items-center gap-3 sm:gap-4 flex-wrap"
                   style={CARD.primary}>
                   {/* File icon */}
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
@@ -491,8 +491,8 @@ export default function Dashboard() {
               </div>{/* end left column */}
               {/* ═══ RIGHT: Sidebar (sticky) ═══ */}
               <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}
-                className="w-[320px] shrink-0 hidden xl:block">
-                <div className="sticky top-20 space-y-4">
+                className="w-[280px] xl:w-[320px] shrink-0 hidden lg:block">
+                <div className="sticky top-[72px] space-y-4">
 
                   {/* ── Document Preview ── */}
                   <div className="rounded-xl overflow-hidden" style={CARD.secondary}>

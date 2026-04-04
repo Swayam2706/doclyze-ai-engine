@@ -219,7 +219,22 @@ base64 -i document.pdf -o document_b64.txt
 
             {/* -- Sidebar -- */}
             <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="lg:col-span-3">
-              <div className="sticky top-24 space-y-0.5">
+              {/* Mobile: horizontal scroll nav */}
+              <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+                {NAV.map(item => (
+                  <a key={item.id} href={`#${item.id}`}
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-[12px] font-medium whitespace-nowrap transition-colors"
+                    style={{
+                      color: activeSection === item.id ? '#818cf8' : 'rgba(255,255,255,0.45)',
+                      background: activeSection === item.id ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${activeSection === item.id ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                    }}>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+              {/* Desktop: sticky sidebar */}
+              <div className="hidden lg:block sticky top-24 space-y-0.5">
                 <p className="text-[10px] font-bold tracking-[0.18em] uppercase mb-4 px-3" style={{ color: 'rgba(255,255,255,0.25)' }}>API Reference</p>
                 {NAV.map(item => {
                   const isActive = activeSection === item.id
