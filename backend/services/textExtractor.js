@@ -54,28 +54,43 @@ async function extractTextWithPdfjs(buffer) {
       useSystemFonts: true,
       disableFontFace: true,
       verbosity: 0,
+      // These options improve compatibility with government/complex PDFs:
+      disableAutoFetch: true,   // don't try to fetch external resources
+      disableStream: true,      // load entire PDF at once
+      isEvalSupported: false,   // safer for server-side
+      stopAtErrors: false,      // continue past non-fatal errors
     })
     const pdf = await loadingTask.promise
     const numPages = pdf.numPages
     const pageTexts = []
+    console.log(`  pdfjs: loading ${numPages}-page PDF...`)
 
     for (let i = 1; i <= numPages; i++) {
-      const page = await pdf.getPage(i)
-      const content = await page.getTextContent()
-      // Join text items, preserving line breaks
-      let pageText = ''
-      let lastY = null
-      for (const item of content.items) {
-        if ('str' in item) {
-          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) {
-            pageText += '\n'
+      try {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent({
+          includeMarkedContent: false,
+          disableCombineTextItems: false,
+        })
+        // Join text items, preserving line breaks based on Y position
+        let pageText = ''
+        let lastY = null
+        for (const item of content.items) {
+          if ('str' in item) {
+            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) {
+              pageText += '\n'
+            }
+            pageText += item.str
+            lastY = item.transform[5]
           }
-          pageText += item.str
-          lastY = item.transform[5]
         }
+        const trimmed = pageText.trim()
+        if (trimmed) pageTexts.push(trimmed)
+        console.log(`  pdfjs page ${i}: ${trimmed.length} chars`)
+        page.cleanup()
+      } catch (pageErr) {
+        console.log(`  pdfjs page ${i} error: ${pageErr.message}`)
       }
-      if (pageText.trim()) pageTexts.push(pageText.trim())
-      page.cleanup()
     }
 
     const combined = pageTexts.join('\n\n').trim()
@@ -99,7 +114,15 @@ async function extractFromPDF(buffer) {
     const data = await pdfParse(buffer)
     parserText = (data.text || '').trim()
     parserPages = data.numpages || 1
-    console.log(`  pdf-parse: ${parserText.length} chars (${parserPages} pages)`)
+    // Check for garbage text — pdf-parse sometimes returns whitespace-only strings
+    // when its bundled pdfjs (v2) can't decode the font/encoding
+    const meaningfulChars = parserText.replace(/[\s\n\r\t]/g, '').length
+    console.log(`  pdf-parse: ${parserText.length} chars total, ${meaningfulChars} meaningful (${parserPages} pages)`)
+    // Require at least 30 meaningful (non-whitespace) chars to consider it valid
+    if (meaningfulChars < 30) {
+      console.log(`  pdf-parse: text is mostly whitespace — treating as failed`)
+      parserText = ''
+    }
   } catch (err) {
     console.log('  pdf-parse failed:', err.message)
   }
