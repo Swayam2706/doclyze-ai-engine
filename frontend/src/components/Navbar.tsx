@@ -13,7 +13,10 @@ export function Navbar() {
     setMobileOpen(false)
     if (location.pathname === '/') {
       const el = document.getElementById('upload-section')
-      if (el) el.scrollIntoView({ behavior: 'smooth' })
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - 80
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      }
     } else {
       navigate('/', { state: { scrollToUpload: true } })
     }

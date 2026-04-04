@@ -303,11 +303,13 @@ export default function Landing() {
   // Scroll to upload section if navigated here with scrollToUpload flag
   useEffect(() => {
     if (location.state?.scrollToUpload) {
-      // Small delay to ensure the page has fully rendered
       const t = setTimeout(() => {
         const el = document.getElementById('upload-section')
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 80)
+        if (el) {
+          const top = el.getBoundingClientRect().top + window.scrollY - 80
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+        }
+      }, 150)
       return () => clearTimeout(t)
     }
   }, [location.state])
