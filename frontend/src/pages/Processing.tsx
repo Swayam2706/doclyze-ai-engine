@@ -156,10 +156,22 @@ export default function Processing() {
     return 0
   }, [progress])
 
-  function getStatus(i: number): 'done' | 'active' | 'pending' {
+  // ── OCR step visibility ──────────────────────────────────
+  // Show OCR step only when:
+  // 1. File is an image (always needs OCR), OR
+  // 2. Backend actually signalled step 1 (OCR ran for a scanned PDF)
+  const isImage = file?.type.startsWith('image/') ?? false
+  const ocrTriggered = isImage || apiStep >= 1
+
+  // Build the visible steps list dynamically
+  const visibleSteps = LABELS
+    .map((label, i) => ({ label, originalIdx: i }))
+    .filter(({ originalIdx }) => originalIdx !== 1 || ocrTriggered)
+
+  function getStatus(originalIdx: number): 'done' | 'active' | 'pending' {
     if (progress >= 100) return 'done'
-    if (progress >= STEP_DONE[i]) return 'done'
-    if (progress >= STEP_START[i]) return 'active'
+    if (progress >= STEP_DONE[originalIdx]) return 'done'
+    if (progress >= STEP_START[originalIdx]) return 'active'
     return 'pending'
   }
 
@@ -354,19 +366,24 @@ export default function Processing() {
                 </motion.div>
               </AnimatePresence>
 
-              {/* Steps */}
+              {/* Steps — OCR step only shown when OCR is actually triggered */}
               <div className="space-y-1">
-                {LABELS.map((label, i) => {
-                  const st = getStatus(i)
+                {visibleSteps.map(({ label, originalIdx }) => {
+                  const st = getStatus(originalIdx)
+                  const isOcrStep = originalIdx === 1
                   return (
-                    <motion.div key={i}
+                    <motion.div
+                      key={originalIdx}
+                      initial={isOcrStep ? { opacity: 0, height: 0 } : false}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.3, ease: 'easeOut' }}
                       className="flex items-center gap-3 py-3 rounded-lg px-2 relative transition-all duration-300"
                       style={{
                         background: st === 'active' ? 'rgba(99,102,241,0.07)' : 'transparent',
                         border: st === 'active' ? '1px solid rgba(99,102,241,0.2)' : '1px solid transparent',
                         boxShadow: st === 'active' ? '0 0 0 1px rgba(99,102,241,0.08), 0 4px 16px rgba(99,102,241,0.08)' : 'none',
                       }}>
-                      {st === 'active' && <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: '#6366f1' }} />}
+                      {st === 'active' && <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: isOcrStep ? '#a78bfa' : '#6366f1' }} />}
                       <div className="shrink-0 w-8 flex justify-center">
                         {st === 'done' && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 15 }}>
@@ -379,7 +396,10 @@ export default function Processing() {
                         {st === 'active' && (
                           <div className="relative">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.3)" strokeWidth="1.5" fill="rgba(99,102,241,0.08)" />
+                              <circle cx="12" cy="12" r="10"
+                                stroke={isOcrStep ? 'rgba(167,139,250,0.4)' : 'rgba(99,102,241,0.3)'}
+                                strokeWidth="1.5"
+                                fill={isOcrStep ? 'rgba(167,139,250,0.08)' : 'rgba(99,102,241,0.08)'} />
                             </svg>
                             <div className="absolute inset-0 flex items-center justify-center">
                               <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
@@ -397,14 +417,22 @@ export default function Processing() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[14px] font-semibold" style={{ color: st === 'pending' ? 'rgba(255,255,255,0.35)' : '#fff' }}>{label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[14px] font-semibold" style={{ color: st === 'pending' ? 'rgba(255,255,255,0.35)' : '#fff' }}>{label}</span>
+                          {isOcrStep && st !== 'pending' && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wider"
+                              style={{ color: 'rgba(167,139,250,0.8)', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
                         {st === 'active' && (
-                          <p className="text-[12px] mt-0.5" style={{ color: 'rgba(139,92,246,0.7)' }}>{currentMsg}</p>
+                          <p className="text-[12px] mt-0.5" style={{ color: isOcrStep ? 'rgba(167,139,250,0.7)' : 'rgba(139,92,246,0.7)' }}>{currentMsg}</p>
                         )}
                       </div>
                       <div className="shrink-0">
                         {st === 'done' && <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.1em] uppercase px-3 py-1 rounded" style={{ color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}><span className="h-[5px] w-[5px] rounded-full bg-[#22c55e]" /> DONE</span>}
-                        {st === 'active' && <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.1em] uppercase px-3 py-1 rounded" style={{ color: '#6366f1', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}><span className="h-[5px] w-[5px] rounded-full bg-[#6366f1] animate-pulse" /> ACTIVE</span>}
+                        {st === 'active' && <span className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.1em] uppercase px-3 py-1 rounded" style={{ color: isOcrStep ? '#a78bfa' : '#6366f1', background: isOcrStep ? 'rgba(139,92,246,0.08)' : 'rgba(99,102,241,0.08)', border: `1px solid ${isOcrStep ? 'rgba(139,92,246,0.2)' : 'rgba(99,102,241,0.2)'}` }}><span className={`h-[5px] w-[5px] rounded-full animate-pulse`} style={{ background: isOcrStep ? '#a78bfa' : '#6366f1' }} /> ACTIVE</span>}
                         {st === 'pending' && <span className="text-[10px] font-bold tracking-[0.1em] uppercase" style={{ color: 'rgba(255,255,255,0.2)' }}>PENDING</span>}
                       </div>
                     </motion.div>
