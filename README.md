@@ -130,6 +130,19 @@ Input (PDF / DOCX / Image)
 
 ---
 
+## 🤖 AI Tools Used
+
+| Tool | Role | How It's Used |
+|---|---|---|
+| **Google Gemini 2.0 Flash** | Primary LLM | Document summarization, semantic entity extraction, sentiment classification. Document-type-aware prompts are used — a resume gets a different prompt than an invoice. Up to 3 API keys rotate automatically on rate limits. |
+| **OpenAI GPT-3.5** | Secondary LLM | Fallback when Gemini is unavailable. Same structured JSON prompt, `response_format: json_object` enforced. |
+| **Google Cloud Vision API** | Primary OCR | `DOCUMENT_TEXT_DETECTION` feature used for scanned PDFs and image files. Returns `fullTextAnnotation` with layout-aware text. |
+| **Tesseract.js v5** | Fallback OCR | Runs locally when Vision API is unavailable (403, 429, or not configured). Processes the same rendered page images. |
+
+**AI usage policy:** All AI outputs are post-processed through a validation layer before being returned. Summaries are checked for contact pollution. Entities are validated against blocklists for section headings, label strings, and synthetic names. The system never returns raw AI output directly — every value is verified against the source text.
+
+---
+
 ## 📡 API Reference
 
 ### `POST /api/document-analyze`
@@ -363,6 +376,22 @@ API_KEY=sk_doclyze_ai_2026
 ```env
 VITE_API_URL=https://doclyze-ai-engine.onrender.com
 ```
+
+---
+
+## ⚠️ Known Limitations
+
+- **Gemini rate limits on free tier** — The free Gemini API allows ~15 requests/minute. Under heavy load, the system falls back to regex-only extraction, which produces weaker summaries but still returns valid entities and sentiment.
+
+- **Complex scanned PDFs** — PDFs with non-standard xref tables or broken structure may fail all four extraction layers. The system reports this honestly in `metadata.ocr_engine: "failed"` rather than returning empty results silently.
+
+- **Table extraction** — Structured data inside PDF tables (rows, columns) is extracted as flat text. Column alignment is not preserved, which can affect entity extraction accuracy for tabular invoices.
+
+- **Non-English documents** — The extraction pipeline is optimized for English. Entity extraction and sentiment classification will be less accurate on documents in other languages.
+
+- **Very large files** — Files above 10 MB are rejected. Multi-page scanned PDFs (10+ pages) may exceed the 30-second processing window on the free Render tier due to per-page OCR time.
+
+- **Render cold starts** — The backend is deployed on Render's free tier, which sleeps after 15 minutes of inactivity. The first request after a sleep period may take 20–30 seconds to respond.
 
 ---
 
