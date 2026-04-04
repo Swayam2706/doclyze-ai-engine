@@ -54,11 +54,11 @@ async function extractTextWithPdfjs(buffer) {
       useSystemFonts: true,
       disableFontFace: true,
       verbosity: 0,
-      // These options improve compatibility with government/complex PDFs:
-      disableAutoFetch: true,   // don't try to fetch external resources
-      disableStream: true,      // load entire PDF at once
-      isEvalSupported: false,   // safer for server-side
+      disableAutoFetch: true,
+      disableStream: true,
+      isEvalSupported: false,
       stopAtErrors: false,      // continue past non-fatal errors
+      ignoreErrors: true,       // recover from structural errors
     })
     const pdf = await loadingTask.promise
     const numPages = pdf.numPages
@@ -72,7 +72,6 @@ async function extractTextWithPdfjs(buffer) {
           includeMarkedContent: false,
           disableCombineTextItems: false,
         })
-        // Join text items, preserving line breaks based on Y position
         let pageText = ''
         let lastY = null
         for (const item of content.items) {
@@ -99,6 +98,72 @@ async function extractTextWithPdfjs(buffer) {
   } catch (err) {
     console.log('  pdfjs text extraction failed:', err.message)
     return { text: '', pages: 0 }
+  }
+}
+
+// ─── Raw PDF binary text extraction ─────────────────────────
+// Last-resort fallback: extract readable text strings directly from PDF binary.
+// Works on PDFs where all parsers fail due to structural issues.
+// Finds text between BT/ET markers and parenthesized strings in content streams.
+function extractRawTextFromPDFBinary(buffer) {
+  try {
+    const raw = buffer.toString('latin1')
+    const chunks = []
+
+    // Method 1: Extract text between BT (begin text) and ET (end text) markers
+    const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g
+    let m
+    while ((m = btEtRegex.exec(raw)) !== null) {
+      const block = m[1]
+      // Extract parenthesized strings: (text here)
+      const strRegex = /\(([^)\\]*(?:\\.[^)\\]*)*)\)/g
+      let sm
+      while ((sm = strRegex.exec(block)) !== null) {
+        const s = sm[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\t/g, '\t')
+          .replace(/\\\(/g, '(')
+          .replace(/\\\)/g, ')')
+          .replace(/\\\\/g, '\\')
+          .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+          .trim()
+        if (s.length > 1) chunks.push(s)
+      }
+    }
+
+    // Method 2: Extract from stream objects directly
+    const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g
+    while ((m = streamRegex.exec(raw)) !== null) {
+      const stream = m[1]
+      // Only process streams that look like content streams (contain Tf, Tj, TJ)
+      if (!/\bT[fjJm]\b/.test(stream)) continue
+      const strRegex2 = /\(([^)\\]{2,}(?:\\.[^)\\]*)*)\)/g
+      let sm2
+      while ((sm2 = strRegex2.exec(stream)) !== null) {
+        const s = sm2[1]
+          .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+          .trim()
+        if (s.length > 2 && /[a-zA-Z]{2,}/.test(s)) chunks.push(s)
+      }
+    }
+
+    if (chunks.length === 0) return ''
+
+    // Deduplicate and join
+    const seen = new Set()
+    const unique = chunks.filter(c => {
+      if (seen.has(c)) return false
+      seen.add(c)
+      return true
+    })
+
+    const result = unique.join(' ').replace(/\s{3,}/g, '  ').trim()
+    console.log(`  Raw binary extraction: ${chunks.length} chunks → ${result.length} chars`)
+    return result
+  } catch (err) {
+    console.log('  Raw binary extraction failed:', err.message)
+    return ''
   }
 }
 
@@ -144,6 +209,15 @@ async function extractFromPDF(buffer) {
 
   // Step 3: Scanned PDF — render to images and OCR (last resort)
   console.log(`  Both parsers returned insufficient text — treating as scanned PDF, attempting OCR`)
+
+  // Before OCR, try one more thing: raw text extraction from PDF binary
+  // Some PDFs have readable text embedded in the binary that parsers miss
+  const rawText = extractRawTextFromPDFBinary(buffer)
+  if (rawText.length >= PDF_TEXT_THRESHOLD) {
+    console.log(`  Raw binary extraction: ${rawText.length} chars — using this`)
+    return { text: rawText, ocr: false, ocrEngine: null, pagesProcessed: 1 }
+  }
+
   return await extractFromScannedPDF(buffer)
 }
 

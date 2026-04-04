@@ -102,6 +102,7 @@ export async function pdfToImages(pdfBuffer, maxPages = 10) {
       disableFontFace: false,  // allow font rendering for better visual fidelity
       verbosity: 0,
       stopAtErrors: false,     // continue past non-fatal errors
+      ignoreErrors: true,      // recover from structural errors in government/complex PDFs
     })
 
     const pdf = await loadingTask.promise
