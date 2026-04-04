@@ -122,7 +122,7 @@ export default function ApiDocs() {
   // -- Code strings ------------------------------------------
   const curlExample = `curl -X POST ${API_DISPLAY}/api/document-analyze \\
   -H "Content-Type: application/json" \\
-  -H "x-api-key: doclyze-hackathon-2026" \\
+  -H "x-api-key: sk_doclyze_ai_2026" \\
   -d '{
     "fileName": "report.pdf",
     "fileType": "pdf",
@@ -175,7 +175,7 @@ const fileBase64 = fileBuffer.toString('base64');
 const response = await axios.post(
   '${API_DISPLAY}/api/document-analyze',
   { fileName: 'document.pdf', fileType: 'pdf', fileBase64 },
-  { headers: { 'Content-Type': 'application/json', 'x-api-key': 'doclyze-hackathon-2026' } }
+  { headers: { 'Content-Type': 'application/json', 'x-api-key': 'sk_doclyze_ai_2026' } }
 );
 
 console.log(response.data.summary);
@@ -190,7 +190,7 @@ with open("document.pdf", "rb") as f:
 response = requests.post(
     "${API_DISPLAY}/api/document-analyze",
     json={"fileName": "document.pdf", "fileType": "pdf", "fileBase64": file_base64},
-    headers={"Content-Type": "application/json", "x-api-key": "doclyze-hackathon-2026"},
+    headers={"Content-Type": "application/json", "x-api-key": "sk_doclyze_ai_2026"},
 )
 
 data = response.json()
@@ -287,7 +287,7 @@ base64 -i document.pdf -o document_b64.txt
                   <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
                     Every request must include a valid API key. Missing or invalid keys return <code className="text-red-400 text-[12px] bg-red-400/10 px-1 rounded">401 Unauthorized</code>.
                   </p>
-                  <CodeBlock code={`x-api-key: doclyze-hackathon-2026`} id="auth-key" copied={copied} onCopy={copy} lang="header" />
+                  <CodeBlock code={`x-api-key: sk_doclyze_ai_2026`} id="auth-key" copied={copied} onCopy={copy} lang="header" />
                 </SectionCard>
               </section>
 
