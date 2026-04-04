@@ -440,52 +440,136 @@ export default function Dashboard() {
                 {/* ── SECONDARY: Extracted Text (accordion) ── */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                   className="rounded-xl overflow-hidden" style={CARD.secondary}>
-                  <button onClick={() => setShowText(!showText)}
-                    className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-white/[0.015] transition-colors">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                      <span className="text-[13px] font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>Extracted Text</span>
+
+                  {/* Full-width clickable header */}
+                  <button
+                    onClick={() => setShowText(!showText)}
+                    className="w-full flex items-center justify-between px-4 sm:px-5 py-3.5 text-left group transition-colors duration-150"
+                    style={{ borderBottom: showText ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
+                    aria-expanded={showText}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                        <Eye className="h-3.5 w-3.5" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                      </div>
+                      <span className="text-[13px] font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>Extracted Text</span>
+                      <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ color: 'rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        {showText ? 'Scrollable' : 'Raw'}
+                      </span>
                     </div>
-                    <motion.div animate={{ rotate: showText ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                      <ChevronDown className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.25)' }} />
+                    <motion.div
+                      animate={{ rotate: showText ? 180 : 0 }}
+                      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      className="shrink-0"
+                    >
+                      <ChevronDown className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
                     </motion.div>
                   </button>
-                  {showText && (
-                    <div className="px-5 pb-4">
-                      <pre className="rounded-lg p-4 overflow-auto text-[12px] font-mono whitespace-pre-wrap max-h-[280px] leading-relaxed"
-                        style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(0,0,0,0.25)' }}>
+
+                  {/* Animated content */}
+                  <motion.div
+                    initial={false}
+                    animate={{ height: showText ? 'auto' : 0, opacity: showText ? 1 : 0 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div className="px-3 sm:px-5 pb-4 pt-3">
+                      <pre
+                        className="rounded-lg p-3 sm:p-4 text-[11px] sm:text-[12px] font-mono whitespace-pre-wrap leading-[1.7] select-text"
+                        style={{
+                          color: 'rgba(255,255,255,0.55)',
+                          background: 'rgba(0,0,0,0.3)',
+                          border: '1px solid rgba(255,255,255,0.05)',
+                          overflowY: 'auto',
+                          overflowX: 'hidden',
+                          maxHeight: 'clamp(200px, 35vh, 320px)',
+                          wordBreak: 'break-word',
+                          lineHeight: '1.7',
+                        }}
+                      >
                         {result.extractedText || 'No text available'}
                       </pre>
                     </div>
-                  )}
+                  </motion.div>
                 </motion.div>
 
                 {/* ── SECONDARY: Raw JSON (accordion) ── */}
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}
                   className="rounded-xl overflow-hidden" style={CARD.secondary}>
-                  <div className="flex items-center justify-between px-5 py-3.5">
-                    <button onClick={() => setShowJson(!showJson)} className="flex items-center gap-2">
-                      <Code className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                      <span className="text-[13px] font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>Raw JSON</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded ml-1" style={{ color: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>Dev</span>
-                      <motion.div animate={{ rotate: showJson ? 180 : 0 }} transition={{ duration: 0.2 }} className="ml-1">
-                        <ChevronDown className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.25)' }} />
+
+                  {/* Full-width header — toggle on left, copy on right, both work independently */}
+                  <div
+                    className="flex items-center justify-between px-4 sm:px-5 py-3.5 cursor-pointer group transition-colors duration-150"
+                    style={{ borderBottom: showJson ? '1px solid rgba(255,255,255,0.05)' : 'none' }}
+                    onClick={() => setShowJson(!showJson)}
+                    role="button"
+                    aria-expanded={showJson}
+                    tabIndex={0}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowJson(!showJson) } }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-6 w-6 rounded-md flex items-center justify-center shrink-0"
+                        style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                        <Code className="h-3.5 w-3.5" style={{ color: 'rgba(129,140,248,0.7)' }} />
+                      </div>
+                      <span className="text-[13px] font-semibold" style={{ color: 'rgba(255,255,255,0.6)' }}>Raw JSON</span>
+                      <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded"
+                        style={{ color: 'rgba(129,140,248,0.5)', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)' }}>
+                        Dev
+                      </span>
+                      <motion.div
+                        animate={{ rotate: showJson ? 180 : 0 }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                        className="shrink-0 ml-0.5"
+                      >
+                        <ChevronDown className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
                       </motion.div>
-                    </button>
-                    <button onClick={copyJson}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
-                      style={{ color: 'rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                      {copiedJson ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+                    </div>
+
+                    {/* Copy button — stops propagation so it doesn't toggle the accordion */}
+                    <button
+                      onClick={e => { e.stopPropagation(); copyJson() }}
+                      className="shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150"
+                      style={{
+                        color: copiedJson ? '#22c55e' : 'rgba(255,255,255,0.45)',
+                        background: copiedJson ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${copiedJson ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                      }}
+                    >
+                      {copiedJson
+                        ? <><Check className="h-3 w-3" /><span className="hidden sm:inline ml-1">Copied</span></>
+                        : <><Copy className="h-3 w-3" /><span className="hidden sm:inline ml-1">Copy</span></>
+                      }
                     </button>
                   </div>
-                  {showJson && (
-                    <div className="px-5 pb-4">
-                      <pre className="rounded-lg p-4 overflow-auto text-[11px] font-mono max-h-[380px] leading-relaxed"
-                        style={{ color: 'rgba(255,255,255,0.4)', background: 'rgba(0,0,0,0.25)' }}>
+
+                  {/* Animated content */}
+                  <motion.div
+                    initial={false}
+                    animate={{ height: showJson ? 'auto' : 0, opacity: showJson ? 1 : 0 }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <div className="px-3 sm:px-5 pb-4 pt-3">
+                      <pre
+                        className="rounded-lg p-3 sm:p-4 text-[10.5px] sm:text-[11px] font-mono leading-[1.65] select-text"
+                        style={{
+                          color: 'rgba(255,255,255,0.45)',
+                          background: 'rgba(0,0,0,0.3)',
+                          border: '1px solid rgba(99,102,241,0.08)',
+                          overflowY: 'auto',
+                          overflowX: 'auto',
+                          maxHeight: 'clamp(240px, 40vh, 420px)',
+                          whiteSpace: 'pre',
+                          wordBreak: 'normal',
+                        }}
+                      >
                         {JSON.stringify((() => { const { extractedText, ...c } = result; return c })(), null, 2)}
                       </pre>
                     </div>
-                  )}
+                  </motion.div>
                 </motion.div>
 
               </div>{/* end left column */}
