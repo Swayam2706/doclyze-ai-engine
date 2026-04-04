@@ -153,17 +153,19 @@ async function extractFromScannedPDF(buffer) {
   const { images, totalPages } = await pdfToImages(buffer)
 
   if (images.length === 0) {
-    console.error('  PDF → image conversion produced 0 images!')
-    return { text: '', ocr: true, ocrEngine: null, pagesProcessed: 0 }
+    console.error('  PDF → image conversion produced 0 images — PDF may be corrupt or image-only without renderable content')
+    // OCR was attempted (rendering was tried) but failed — set engine to 'failed' so metadata is honest
+    return { text: '', ocr: true, ocrEngine: 'failed', pagesProcessed: 0 }
   }
 
   console.log(`  OCR pipeline: processing ${images.length} page image(s)...`)
 
   const pageTexts = []
-  let finalEngine = 'tesseract'
+  let finalEngine = null  // will be set to actual engine used
 
   for (let i = 0; i < images.length; i++) {
-    console.log(`  OCR page ${i + 1}/${images.length} (${(images[i].length / 1024).toFixed(1)} KB)`)
+    const imgKB = (images[i].length / 1024).toFixed(1)
+    console.log(`  OCR page ${i + 1}/${images.length} (${imgKB} KB)`)
 
     if (images[i].length < 5000) {
       console.warn(`  Page ${i + 1}: image buffer too small (${images[i].length} bytes) — may be blank, skipping`)
@@ -181,11 +183,19 @@ async function extractFromScannedPDF(buffer) {
       console.warn(`  Page ${i + 1}: OCR returned empty text`)
     }
 
-    if (result.engine === 'vision') finalEngine = 'vision'
+    // Track which engine was actually used (prefer vision over tesseract)
+    if (result.engine === 'vision') {
+      finalEngine = 'vision'
+    } else if (finalEngine === null && result.engine) {
+      finalEngine = result.engine
+    }
   }
 
   const combinedText = pageTexts.join('\n\n').trim()
-  console.log(`  Scanned PDF OCR complete: ${combinedText.length} total chars, engine=${finalEngine}, pages=${totalPages}`)
+  // If no engine was recorded (all pages skipped), default to tesseract since that's what would have run
+  const resolvedEngine = finalEngine || 'tesseract'
+
+  console.log(`  Scanned PDF OCR complete: ${combinedText.length} total chars, engine=${resolvedEngine}, pages=${totalPages}`)
 
   if (combinedText.length === 0) {
     console.error('  All pages returned empty OCR text!')
@@ -194,7 +204,7 @@ async function extractFromScannedPDF(buffer) {
   return {
     text: combinedText,
     ocr: true,
-    ocrEngine: finalEngine,
+    ocrEngine: resolvedEngine,
     pagesProcessed: totalPages,
   }
 }

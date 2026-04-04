@@ -38,8 +38,8 @@ function suppressPdfjsNoise(fn, ...args) {
   if (
     msg.includes('Indexing all PDF') ||
     msg.includes('getHexString') ||
-    msg.includes('Invalid PDF') ||
     msg.includes('Warning:')
+    // NOTE: do NOT suppress 'Invalid PDF' — we need to see those errors
   ) return
   fn.apply(console, args)
 }
@@ -112,15 +112,19 @@ export async function pdfToImages(pdfBuffer, maxPages = 10) {
 
     for (let i = 1; i <= totalPages; i++) {
       console.log(`  Rendering page ${i}/${totalPages}...`)
-      const page = await pdf.getPage(i)
-      const imgBuffer = await renderPage(page, 3.5)
+      try {
+        const page = await pdf.getPage(i)
+        const imgBuffer = await renderPage(page, 3.5)
 
-      if (imgBuffer.length < 5000) {
-        console.warn(`  Warning: page ${i} image is very small (${imgBuffer.length} bytes) — may be blank`)
+        if (imgBuffer.length < 5000) {
+          console.warn(`  Warning: page ${i} image is very small (${imgBuffer.length} bytes) — may be blank`)
+        }
+
+        images.push(imgBuffer)
+        page.cleanup()
+      } catch (pageErr) {
+        console.error(`  Page ${i} render error: ${pageErr.message} — skipping`)
       }
-
-      images.push(imgBuffer)
-      page.cleanup()
     }
 
     console.log(`  PDF → images complete: ${images.length} images generated`)
