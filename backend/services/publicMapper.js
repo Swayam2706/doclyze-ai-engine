@@ -30,7 +30,14 @@ export function mapToPublicResponse(internalResult, fileName, fileSize = 0) {
       skills: validateGenericArr(ent.skills),
       urls: validateGenericArr(ent.urls),
     },
-    sentiment: buildSentiment(internalResult.sentiment),
+    // Top-level string for spec compliance: "sentiment": "Positive"
+    sentiment: capitalizeSentiment(
+      typeof internalResult.sentiment === 'string'
+        ? internalResult.sentiment
+        : internalResult.sentiment?.label || 'neutral'
+    ),
+    // Extended object with confidence for richer scoring
+    sentiment_detail: buildSentiment(internalResult.sentiment),
     confidence: internalResult.confidence || 0,
     metadata: {
       ocr_used: meta.ocr_used || false,

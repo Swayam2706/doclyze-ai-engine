@@ -135,8 +135,8 @@ async function callGemini(prompt, text) {
         if (status === 429) {
           if (attempt === 1) {
             // Wait 8 seconds then retry same key once
-            console.log(`  Gemini 429 — waiting 8s before retry (attempt ${attempt}/2)...`)
-            await new Promise(r => setTimeout(r, 8000))
+            console.log(`  Gemini 429 — waiting 3s before retry (attempt ${attempt}/2)...`)
+            await new Promise(r => setTimeout(r, 3000))
             continue
           }
           // Second attempt also 429 — move to next key

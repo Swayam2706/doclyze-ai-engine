@@ -15,11 +15,11 @@ An AI document intelligence platform that extracts summaries, entities, and sent
 
 ## Tech Stack
 
-- Frontend: React 18, Vite, Tailwind CSS, Framer Motion
+- Frontend: React 18, Vite, Tailwind CSS, Framer Motion, jsPDF
 - Backend: Node.js, Express
-- Database: MongoDB
-- OCR: Tesseract.js
-- Text extraction: pdf-parse (PDF), mammoth (DOCX)
+- Database: MongoDB Atlas
+- OCR: Google Cloud Vision API (primary) + Tesseract.js (fallback)
+- Text extraction: pdf-parse + pdfjs-dist (PDF), mammoth (DOCX)
 - AI: OpenAI GPT-3.5 / Google Gemini 2.0 Flash
 
 ## Setup
@@ -51,6 +51,7 @@ PORT=5000
 MONGODB_URI=mongodb://localhost:27017/doclyze
 OPENAI_API_KEY=your_openai_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
+GOOGLE_VISION_API_KEY=your_google_vision_api_key_here
 API_KEY=your_secret_api_key_here
 ```
 
@@ -92,7 +93,9 @@ Response:
     "organizations": [],
     "amounts": []
   },
-  "sentiment": "Neutral"
+  "sentiment": "Neutral",
+  "confidence": 0.91,
+  "document_type": "report"
 }
 ```
 
