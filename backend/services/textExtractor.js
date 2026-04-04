@@ -165,8 +165,8 @@ async function extractFromScannedPDF(buffer) {
   for (let i = 0; i < images.length; i++) {
     console.log(`  OCR page ${i + 1}/${images.length} (${(images[i].length / 1024).toFixed(1)} KB)`)
 
-    if (images[i].length < 500) {
-      console.warn(`  Page ${i + 1}: image buffer suspiciously small — skipping`)
+    if (images[i].length < 5000) {
+      console.warn(`  Page ${i + 1}: image buffer too small (${images[i].length} bytes) — may be blank, skipping`)
       continue
     }
 

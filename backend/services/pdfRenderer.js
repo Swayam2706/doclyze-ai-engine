@@ -46,9 +46,10 @@ function suppressPdfjsNoise(fn, ...args) {
 
 /**
  * Render a single PDF page to a PNG buffer.
- * Scale 2.0 = 144 DPI — good balance of quality vs memory.
+ * Scale 3.5 = ~252 DPI — high enough for Tesseract to read small text reliably.
+ * Government letters and notices often have small fonts that need higher DPI.
  */
-async function renderPage(page, scale = 2.0) {
+async function renderPage(page, scale = 3.5) {
   const viewport = page.getViewport({ scale })
   const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height))
   const context = canvas.getContext('2d')
@@ -63,8 +64,22 @@ async function renderPage(page, scale = 2.0) {
     background: 'white',
   }).promise
 
+  // Apply contrast enhancement for better OCR accuracy on scanned/faint text
+  // This is a simple brightness/contrast pass on the canvas pixels
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+  const data = imageData.data
+  const contrast = 1.3  // 30% contrast boost
+  const brightness = 10 // slight brightness lift
+  const factor = (259 * (contrast * 255 + 255)) / (255 * (259 - contrast * 255))
+  for (let i = 0; i < data.length; i += 4) {
+    data[i]     = Math.min(255, Math.max(0, factor * (data[i]     - 128) + 128 + brightness))
+    data[i + 1] = Math.min(255, Math.max(0, factor * (data[i + 1] - 128) + 128 + brightness))
+    data[i + 2] = Math.min(255, Math.max(0, factor * (data[i + 2] - 128) + 128 + brightness))
+  }
+  context.putImageData(imageData, 0, 0)
+
   const imgBuffer = canvas.toBuffer('image/png')
-  console.log(`    Page rendered: ${canvas.width}x${canvas.height}px, ${(imgBuffer.length / 1024).toFixed(1)} KB`)
+  console.log(`    Page rendered: ${canvas.width}x${canvas.height}px @ scale ${scale}, ${(imgBuffer.length / 1024).toFixed(1)} KB`)
   return imgBuffer
 }
 
@@ -84,8 +99,9 @@ export async function pdfToImages(pdfBuffer, maxPages = 10) {
     const loadingTask = pdfjsLib.getDocument({
       data: uint8Array,
       useSystemFonts: true,
-      disableFontFace: true,
+      disableFontFace: false,  // allow font rendering for better visual fidelity
       verbosity: 0,
+      stopAtErrors: false,     // continue past non-fatal errors
     })
 
     const pdf = await loadingTask.promise
@@ -97,9 +113,9 @@ export async function pdfToImages(pdfBuffer, maxPages = 10) {
     for (let i = 1; i <= totalPages; i++) {
       console.log(`  Rendering page ${i}/${totalPages}...`)
       const page = await pdf.getPage(i)
-      const imgBuffer = await renderPage(page, 2.0)
+      const imgBuffer = await renderPage(page, 3.5)
 
-      if (imgBuffer.length < 1000) {
+      if (imgBuffer.length < 5000) {
         console.warn(`  Warning: page ${i} image is very small (${imgBuffer.length} bytes) — may be blank`)
       }
 
