@@ -138,14 +138,28 @@ export default function ApiDocs() {
   const successResponse = `{
   "status": "success",
   "fileName": "quarterly-report.pdf",
-  "summary": "AI-generated concise summary of the document content.",
+  "summary": "The quarterly report outlines revenue growth of 15% in Q4 2024, driven by expansion in the technology sector. Key findings include increased operating efficiency and new partnerships with major industry players.",
   "entities": {
     "names": ["John Smith", "Jane Doe"],
     "dates": ["January 15, 2025", "Q4 2024"],
     "organizations": ["Acme Corp", "Global Industries"],
-    "amounts": ["$12,450.00", "$3,200"]
+    "amounts": ["$12,450.00", "$3,200"],
+    "emails": [],
+    "phone_numbers": [],
+    "locations": ["New York", "San Francisco"],
+    "skills": [],
+    "urls": []
   },
-  "sentiment": "Neutral"
+  "sentiment": "Positive",
+  "fileSize": 33648,
+  "document_type": "report",
+  "confidence": 0.91,
+  "metadata": {
+    "ocr_used": false,
+    "ocr_engine": null,
+    "pages_processed": 2,
+    "processing_time_ms": 8712
+  }
 }`
 
   const errorUnauth = `{ "status": "error", "fileName": "report.pdf", "message": "Unauthorized: invalid or missing API key" }`
@@ -338,8 +352,13 @@ base64 -i document.pdf -o document_b64.txt
                   </div>
                   <div className="rounded-lg px-4 py-3 space-y-1.5" style={{ background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.1)' }}>
                     <p className="text-[11px] font-semibold" style={{ color: 'rgba(251,191,36,0.7)' }}>Important Notes</p>
-                    {['Only one file per request.', 'For images, use "image" as fileType � not the extension.', 'fileBase64 must be raw base64 without the data:...;base64, prefix.', 'Maximum file size: 10 MB.'].map((n, i) => (
-                      <p key={i} className="text-[12px]" style={{ color: 'rgba(255,255,255,0.38)' }}>� {n}</p>
+                    {[
+                      'Only one file per request.',
+                      'For images, use "image" as fileType — not the file extension.',
+                      'fileBase64 must be raw base64 without the data:...;base64, prefix.',
+                      'Maximum file size: 10 MB.',
+                    ].map((n, i) => (
+                      <p key={i} className="text-[12px]" style={{ color: 'rgba(255,255,255,0.38)' }}>· {n}</p>
                     ))}
                   </div>
                   <div>
@@ -353,35 +372,75 @@ base64 -i document.pdf -o document_b64.txt
               <section id="response">
                 <SectionCard>
                   <h2 className="text-[16px] font-bold text-white">Success Response</h2>
-                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <table className="w-full text-[13px]">
-                      <thead>
-                        <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                          {['Field', 'Type', 'Description'].map(h => (
-                            <th key={h} className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.3)' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          ['status', 'string', '"success"'],
-                          ['fileName', 'string', 'Original file name'],
-                          ['summary', 'string', 'AI-generated document summary'],
-                          ['entities.names', 'string[]', 'Extracted person names'],
-                          ['entities.dates', 'string[]', 'Extracted dates'],
-                          ['entities.organizations', 'string[]', 'Extracted organizations'],
-                          ['entities.amounts', 'string[]', 'Extracted monetary amounts'],
-                          ['sentiment', 'string', '"Positive", "Neutral", or "Negative"'],
-                        ].map(([f, t, d]) => (
-                          <tr key={f} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                            <td className="px-4 py-3 font-mono text-[12px]" style={{ color: '#818cf8' }}>{f}</td>
-                            <td className="px-4 py-3 font-mono text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{t}</td>
-                            <td className="px-4 py-3 text-[13px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{d}</td>
+                  <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    HTTP 200 · <code className="text-[#818cf8]">application/json</code>
+                  </p>
+
+                  {/* Required fields */}
+                  <div>
+                    <p className="text-[11px] font-bold tracking-[0.15em] uppercase mb-2" style={{ color: 'rgba(99,102,241,0.7)' }}>Required Fields</p>
+                    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <table className="w-full text-[13px]">
+                        <thead>
+                          <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            {['Field', 'Type', 'Description'].map(h => (
+                              <th key={h} className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.3)' }}>{h}</th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {[
+                            ['status', 'string', '"success" on success, "error" on failure'],
+                            ['fileName', 'string', 'Original file name from request'],
+                            ['summary', 'string', 'AI-generated concise document summary'],
+                            ['entities.names', 'string[]', 'Extracted person names'],
+                            ['entities.dates', 'string[]', 'Extracted dates and date ranges'],
+                            ['entities.organizations', 'string[]', 'Extracted organization names'],
+                            ['entities.amounts', 'string[]', 'Extracted monetary amounts'],
+                            ['sentiment', 'string', '"Positive", "Neutral", or "Negative"'],
+                          ].map(([f, t, d]) => (
+                            <tr key={f} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td className="px-4 py-3 font-mono text-[12px]" style={{ color: '#818cf8' }}>{f}</td>
+                              <td className="px-4 py-3 font-mono text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{t}</td>
+                              <td className="px-4 py-3 text-[13px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{d}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
+
+                  {/* Optional / extended fields */}
+                  <div>
+                    <p className="text-[11px] font-bold tracking-[0.15em] uppercase mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>Additional Fields (always present)</p>
+                    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <table className="w-full text-[13px]">
+                        <tbody>
+                          {[
+                            ['entities.emails', 'string[]', 'Extracted email addresses'],
+                            ['entities.phone_numbers', 'string[]', 'Extracted phone numbers'],
+                            ['entities.locations', 'string[]', 'Extracted locations'],
+                            ['entities.skills', 'string[]', 'Extracted skills (resumes)'],
+                            ['entities.urls', 'string[]', 'Extracted URLs'],
+                            ['document_type', 'string', 'Detected type: resume, invoice, report, letter, notice, general'],
+                            ['confidence', 'number', 'Extraction confidence score (0–1)'],
+                            ['fileSize', 'number', 'File size in bytes'],
+                            ['metadata.ocr_used', 'boolean', 'Whether OCR was used'],
+                            ['metadata.ocr_engine', 'string | null', '"vision" (Google Vision) or "tesseract", null if not used'],
+                            ['metadata.pages_processed', 'number', 'Number of pages processed'],
+                            ['metadata.processing_time_ms', 'number', 'Total processing time in milliseconds'],
+                          ].map(([f, t, d]) => (
+                            <tr key={f} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td className="px-4 py-3 font-mono text-[12px]" style={{ color: 'rgba(129,140,248,0.7)' }}>{f}</td>
+                              <td className="px-4 py-3 font-mono text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{t}</td>
+                              <td className="px-4 py-3 text-[13px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{d}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   <CodeBlock code={successResponse} id="res" copied={copied} onCopy={copy} lang="json" />
                 </SectionCard>
               </section>
@@ -418,7 +477,7 @@ base64 -i document.pdf -o document_b64.txt
                       ['OCR/extraction/model failure', '500'],
                     ].map(([cond, status]) => (
                       <div key={cond} className="flex items-center justify-between">
-                        <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.38)' }}>� {cond}</span>
+                        <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.38)' }}>· {cond}</span>
                         <span className="text-[11px] font-mono font-bold" style={{ color: '#f87171' }}>{status}</span>
                       </div>
                     ))}
