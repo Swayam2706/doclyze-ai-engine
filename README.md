@@ -15,7 +15,6 @@
 | Live Application | https://doclyze-ai-engine.vercel.app |
 | API Health Check | https://doclyze-ai-engine.onrender.com/api/health |
 | Public API Endpoint | `POST https://doclyze-ai-engine.onrender.com/api/document-analyze` *(use cURL or Postman — POST only)* |
-| GitHub Repository | https://github.com/Swayam2706/doclyze-ai-engine |
 
 ---
 
