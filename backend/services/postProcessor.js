@@ -39,6 +39,19 @@ function isGenericJunk(val) {
     'education', 'technical skills', 'achievements', 'certifications',
     'projects', 'experience', 'skills', 'contact', 'references',
     'n/a', 'none', 'null', 'undefined',
+    // Invoice/document labels that leak as entities
+    'bill to', 'ship to', 'sold to', 'invoice', 'invoice number',
+    'total', 'subtotal', 'amount due', 'grand total', 'balance due',
+    'hosting charges', 'service charges', 'item description',
+    'quantity', 'unit price', 'tax', 'discount',
+    // Notice/letter labels
+    'notice', 'announcement', 'subject', 're:', 'dear', 'sincerely',
+    'regards', 'yours faithfully', 'yours truly',
+    // Generic document labels
+    'abstract', 'introduction', 'conclusion', 'appendix',
+    'figure', 'table', 'reference', 'bibliography',
+    'disclaimer', 'legal', 'terms', 'conditions',
+    'page', 'section', 'chapter',
   ]
   return junk.includes(lower)
 }
@@ -69,6 +82,13 @@ const TOPIC_WORDS = new Set([
   'trends','insights','outlook','forecast','projection','quarter',
   'annual','revenue','profit','investment','capital','market','global',
   'national','international','virtual','recent','future','current',
+  // Additional document/academic terms
+  'abstract','introduction','conclusion','appendix','figure','table',
+  'reference','bibliography','disclaimer','legal','terms','conditions',
+  'section','chapter','notice','announcement','subject','invoice',
+  'total','subtotal','balance','payment','billing','shipping',
+  'safe','drinking','water','copper','rule','act','regulation',
+  'compliance','enforcement','violation','penalty','sanction',
 ])
 
 function isValidPerson(val) {
@@ -300,11 +320,16 @@ export function mergeAndValidate(regex, ai, docType) {
     phone_numbers: dedup(regex.phone_numbers || []).filter(isValidPhone).slice(0, 5),
     urls: dedup(regex.urls || []).filter(isValidURL).slice(0, 15),
     dates: dedup(regex.dates || []).filter(isValidGeneric).slice(0, 25),
-    // Merge regex + AI monetary amounts for best coverage
+    // Merge regex + AI monetary amounts, strip label prefixes, deduplicate
     monetary_amounts: dedup([
       ...(regex.monetary_amounts || []),
       ...(aiEnt.monetary_amounts || []),
-    ]).filter(isValidGeneric).slice(0, 15),
+    ].map(v => {
+      if (typeof v !== 'string') return ''
+      // Strip label prefixes like "Total: $1,400" → "$1,400"
+      const stripped = v.replace(/^[A-Za-z\s]+:\s*/, '').trim()
+      return stripped || v
+    })).filter(isValidGeneric).slice(0, 15),
     persons: [],
     organizations: [],
     locations: cleanArr([...(regex.locations || []), ...(aiEnt.locations || [])], isValidGeneric, 10),

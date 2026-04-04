@@ -95,6 +95,17 @@ const SECTION_HEADINGS = new Set([
   'references', 'contact', 'contact information', 'languages',
   'interests', 'hobbies', 'qualifications', 'declaration',
   'additional information', 'about me', 'about',
+  // Academic/document sections
+  'abstract', 'introduction', 'conclusion', 'appendix',
+  'figure', 'table', 'reference', 'bibliography', 'footnote',
+  'disclaimer', 'legal', 'terms', 'conditions', 'notice',
+  'announcement', 'subject', 'overview', 'background',
+  // Invoice/billing labels
+  'bill to', 'ship to', 'sold to', 'billed to',
+  'invoice', 'invoice number', 'invoice date',
+  'total', 'subtotal', 'amount due', 'grand total', 'balance due',
+  'payment terms', 'item description', 'quantity', 'unit price',
+  'tax', 'discount', 'hosting charges', 'service charges',
 ])
 
 export function isSectionHeading(line) {
