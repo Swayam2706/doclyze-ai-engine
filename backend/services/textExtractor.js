@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Text Extraction Service
  *
  * Pipeline:
@@ -167,25 +167,72 @@ function extractRawTextFromPDFBinary(buffer) {
   }
 }
 
-// ─── PDF ─────────────────────────────────────────────────────
+// ─── PDF text quality validators ─────────────────────────────
+
+/**
+ * Detect if extracted text is PDF internal metadata/XMP garbage
+ * rather than visible page content.
+ * Returns true if text looks like metadata/garbage.
+ */
+function isMetadataGarbage(text) {
+  if (!text || text.length < 10) return true
+  const lower = text.toLowerCase()
+
+  // Strong metadata signals — if any of these appear prominently, it's garbage
+  const metadataSignals = [
+    'xpacket', 'xmpmeta', 'rdf:rdf', 'rdf:description', 'ns.adobe.com',
+    'x:xmptk', 'dc:format', 'pdf:producer', 'xmp:createdate', 'xmp:modifydate',
+    'adobe xmp', 'default swatch group', 'adobe illustrator',
+    'pdfaid:', 'pdfuaid:', 'uuid:', 'instanceid',
+  ]
+  for (const signal of metadataSignals) {
+    if (lower.includes(signal)) {
+      console.log(`  Garbage detector: found metadata signal "${signal}"`)
+      return true
+    }
+  }
+
+  // Check ratio of readable words vs total chars
+  // Real document text has mostly readable words
+  const words = text.match(/\b[a-zA-Z]{3,}\b/g) || []
+  const totalChars = text.replace(/\s/g, '').length
+  if (totalChars > 100) {
+    const wordChars = words.join('').length
+    const wordRatio = wordChars / totalChars
+    if (wordRatio < 0.25) {
+      console.log(`  Garbage detector: low word ratio ${(wordRatio * 100).toFixed(0)}% — likely metadata/binary`)
+      return true
+    }
+  }
+
+  // Check for excessive URL-like patterns (metadata often has many URLs)
+  const urlCount = (text.match(/https?:\/\/[^\s]+/g) || []).length
+  const lineCount = text.split('\n').filter(l => l.trim()).length || 1
+  if (urlCount > 3 && urlCount / lineCount > 0.4) {
+    console.log(`  Garbage detector: excessive URLs (${urlCount}) — likely metadata`)
+    return true
+  }
+
+  return false
+}
 
 async function extractFromPDF(buffer) {
-  console.log(`  PDF buffer size: ${(buffer.length / 1024).toFixed(1)} KB`)
+  console.log(  PDF buffer size: ${(buffer.length / 1024).toFixed(1)} KB)
 
-  // Step 1: Try pdf-parse (fast, handles most text PDFs)
+  // Step 1: Try pdf-parse
   let parserText = ''
   let parserPages = 1
   try {
     const data = await pdfParse(buffer)
     parserText = (data.text || '').trim()
     parserPages = data.numpages || 1
-    // Check for garbage text — pdf-parse sometimes returns whitespace-only strings
-    // when its bundled pdfjs (v2) can't decode the font/encoding
     const meaningfulChars = parserText.replace(/[\s\n\r\t]/g, '').length
-    console.log(`  pdf-parse: ${parserText.length} chars total, ${meaningfulChars} meaningful (${parserPages} pages)`)
-    // Require at least 30 meaningful (non-whitespace) chars to consider it valid
+    console.log(  pdf-parse: ${parserText.length} chars total, ${meaningfulChars} meaningful (${parserPages} pages))
     if (meaningfulChars < 30) {
-      console.log(`  pdf-parse: text is mostly whitespace — treating as failed`)
+      console.log('  pdf-parse: text is mostly whitespace — treating as failed')
+      parserText = ''
+    } else if (isMetadataGarbage(parserText)) {
+      console.log('  pdf-parse: text is metadata/garbage — rejecting, will try pdfjs')
       parserText = ''
     }
   } catch (err) {
@@ -197,30 +244,28 @@ async function extractFromPDF(buffer) {
     return { text: parserText, ocr: false, ocrEngine: null, pagesProcessed: parserPages }
   }
 
-  // Step 2: Try pdfjs text extraction — handles complex/encrypted/non-standard PDFs
-  // that pdf-parse fails on but are still machine-readable
-  console.log(`  pdf-parse insufficient (${parserText.length} chars) — trying pdfjs text extraction...`)
+  // Step 2: Try pdfjs text extraction
+  console.log(  pdf-parse insufficient (${parserText.length} chars) — trying pdfjs text extraction...)
   const { text: pdfjsText, pages: pdfjsPages } = await extractTextWithPdfjs(buffer)
-
-  if (pdfjsText.length >= PDF_TEXT_THRESHOLD) {
-    console.log(`  PDF is text-based (pdfjs) — ${pdfjsText.length} chars, no OCR needed`)
-    return { text: pdfjsText, ocr: false, ocrEngine: null, pagesProcessed: pdfjsPages || 1 }
+  const pdfjsClean = pdfjsText && !isMetadataGarbage(pdfjsText) ? pdfjsText : ''
+  if (pdfjsClean.length >= PDF_TEXT_THRESHOLD) {
+    console.log(  PDF is text-based (pdfjs) — ${pdfjsClean.length} chars, no OCR needed)
+    return { text: pdfjsClean, ocr: false, ocrEngine: null, pagesProcessed: pdfjsPages || 1 }
   }
 
-  // Step 3: Scanned PDF — render to images and OCR (last resort)
-  console.log(`  Both parsers returned insufficient text — treating as scanned PDF, attempting OCR`)
-
-  // Before OCR, try one more thing: raw text extraction from PDF binary
-  // Some PDFs have readable text embedded in the binary that parsers miss
+  // Step 3: Raw binary extraction — reads content streams, skips metadata objects
+  console.log('  Both parsers insufficient — trying raw binary extraction...')
   const rawText = extractRawTextFromPDFBinary(buffer)
-  if (rawText.length >= PDF_TEXT_THRESHOLD) {
-    console.log(`  Raw binary extraction: ${rawText.length} chars — using this`)
-    return { text: rawText, ocr: false, ocrEngine: null, pagesProcessed: 1 }
+  const rawClean = rawText && !isMetadataGarbage(rawText) ? rawText : ''
+  if (rawClean.length >= PDF_TEXT_THRESHOLD) {
+    console.log(  Raw binary extraction: ${rawClean.length} chars — using this)
+    return { text: rawClean, ocr: false, ocrEngine: null, pagesProcessed: 1 }
   }
 
+  // Step 4: Scanned PDF — render pages and OCR
+  console.log('  All text parsers failed — treating as scanned PDF, attempting OCR')
   return await extractFromScannedPDF(buffer)
 }
-
 async function extractFromScannedPDF(buffer) {
   console.log('  Starting scanned PDF OCR pipeline...')
 
