@@ -11,38 +11,42 @@ export function mapToPublicResponse(internalResult, fileName, fileSize = 0) {
   const ent = internalResult.entities || {}
   const meta = internalResult.metadata || {}
 
+  // Extract sentiment label as plain string (spec requirement)
+  const sentimentLabel = capitalizeSentiment(
+    typeof internalResult.sentiment === 'string'
+      ? internalResult.sentiment
+      : internalResult.sentiment?.label || 'neutral'
+  )
+
   return {
+    // ── Required fields (exact spec format) ──────────────────
     success: internalResult.success !== false,
     status: 'success',
     fileName: fileName || 'unknown',
-    fileSize: fileSize || 0,
-    document_type: internalResult.document_type || 'general',
     summary: sanitizeSummary(internalResult.summary || ''),
     entities: {
-      names: validateNames(ent.persons),
-      dates: validateDates(ent.dates),
+      // Required entity keys — always arrays, never null
+      names:         validateNames(ent.persons),
+      dates:         validateDates(ent.dates),
       organizations: validateOrganizations(ent.organizations),
-      amounts: validateAmounts(ent.monetary_amounts),
-      // Extended fields for richer scoring
-      emails: validateGenericArr(ent.emails),
+      amounts:       validateAmounts(ent.monetary_amounts),
+      // Extended entity keys for richer scoring
+      emails:        validateGenericArr(ent.emails),
       phone_numbers: validateGenericArr(ent.phone_numbers),
-      locations: validateGenericArr(ent.locations),
-      skills: validateGenericArr(ent.skills),
-      urls: validateGenericArr(ent.urls),
+      locations:     validateGenericArr(ent.locations),
+      skills:        validateGenericArr(ent.skills),
+      urls:          validateGenericArr(ent.urls),
     },
-    // Top-level string for spec compliance: "sentiment": "Positive"
-    sentiment: capitalizeSentiment(
-      typeof internalResult.sentiment === 'string'
-        ? internalResult.sentiment
-        : internalResult.sentiment?.label || 'neutral'
-    ),
-    // Extended object with confidence for richer scoring
-    sentiment_detail: buildSentiment(internalResult.sentiment),
-    confidence: internalResult.confidence || 0,
+    sentiment: sentimentLabel,   // plain string: "Positive" | "Neutral" | "Negative"
+
+    // ── Optional enrichment fields ────────────────────────────
+    fileSize:      fileSize || 0,
+    document_type: internalResult.document_type || 'general',
+    confidence:    internalResult.confidence || 0,
     metadata: {
-      ocr_used: meta.ocr_used || false,
-      ocr_engine: meta.ocr_engine || null,
-      pages_processed: meta.pages_processed || 1,
+      ocr_used:           meta.ocr_used  || false,
+      ocr_engine:         meta.ocr_engine || null,
+      pages_processed:    meta.pages_processed || 1,
       processing_time_ms: meta.processing_time_ms || 0,
     },
   }
