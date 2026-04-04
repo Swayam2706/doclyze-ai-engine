@@ -1,4 +1,4 @@
-﻿/**
+﻿﻿/**
  * Text Extraction Service
  *
  * Pipeline:
@@ -217,7 +217,7 @@ function isMetadataGarbage(text) {
 }
 
 async function extractFromPDF(buffer) {
-  console.log(  PDF buffer size: ${(buffer.length / 1024).toFixed(1)} KB)
+  console.log(`  PDF buffer size: ${(buffer.length / 1024).toFixed(1)} KB`)
 
   // Step 1: Try pdf-parse
   let parserText = ''
@@ -227,7 +227,7 @@ async function extractFromPDF(buffer) {
     parserText = (data.text || '').trim()
     parserPages = data.numpages || 1
     const meaningfulChars = parserText.replace(/[\s\n\r\t]/g, '').length
-    console.log(  pdf-parse: ${parserText.length} chars total, ${meaningfulChars} meaningful (${parserPages} pages))
+    console.log(`  pdf-parse: ${parserText.length} chars total, ${meaningfulChars} meaningful (${parserPages} pages)`)
     if (meaningfulChars < 30) {
       console.log('  pdf-parse: text is mostly whitespace — treating as failed')
       parserText = ''
@@ -245,11 +245,11 @@ async function extractFromPDF(buffer) {
   }
 
   // Step 2: Try pdfjs text extraction
-  console.log(  pdf-parse insufficient (${parserText.length} chars) — trying pdfjs text extraction...)
+  console.log(`  pdf-parse insufficient (${parserText.length} chars) — trying pdfjs text extraction...`)
   const { text: pdfjsText, pages: pdfjsPages } = await extractTextWithPdfjs(buffer)
   const pdfjsClean = pdfjsText && !isMetadataGarbage(pdfjsText) ? pdfjsText : ''
   if (pdfjsClean.length >= PDF_TEXT_THRESHOLD) {
-    console.log(  PDF is text-based (pdfjs) — ${pdfjsClean.length} chars, no OCR needed)
+    console.log(`  PDF is text-based (pdfjs) — ${pdfjsClean.length} chars, no OCR needed`)
     return { text: pdfjsClean, ocr: false, ocrEngine: null, pagesProcessed: pdfjsPages || 1 }
   }
 
@@ -258,7 +258,7 @@ async function extractFromPDF(buffer) {
   const rawText = extractRawTextFromPDFBinary(buffer)
   const rawClean = rawText && !isMetadataGarbage(rawText) ? rawText : ''
   if (rawClean.length >= PDF_TEXT_THRESHOLD) {
-    console.log(  Raw binary extraction: ${rawClean.length} chars — using this)
+    console.log(`  Raw binary extraction: ${rawClean.length} chars — using this`)
     return { text: rawClean, ocr: false, ocrEngine: null, pagesProcessed: 1 }
   }
 
@@ -266,6 +266,7 @@ async function extractFromPDF(buffer) {
   console.log('  All text parsers failed — treating as scanned PDF, attempting OCR')
   return await extractFromScannedPDF(buffer)
 }
+
 async function extractFromScannedPDF(buffer) {
   console.log('  Starting scanned PDF OCR pipeline...')
 
