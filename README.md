@@ -18,6 +18,25 @@
 
 ---
 
+## � API Key
+
+Use this key to authenticate all requests to the public API endpoint:
+
+```
+x-api-key: sk_doclyze_ai_2026
+```
+
+Send it as a request header:
+
+```bash
+curl -X POST https://doclyze-ai-engine.onrender.com/api/document-analyze \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: sk_doclyze_ai_2026" \
+  -d '{ "fileName": "report.pdf", "fileType": "pdf", "fileBase64": "<base64>" }'
+```
+
+---
+
 ## 📌 The Problem
 
 Documents are everywhere — invoices, resumes, reports, legal letters, notices — but extracting structured, actionable information from them is still a manual, time-consuming process. Existing tools either require expensive enterprise licenses, return noisy unstructured text, or fail entirely on scanned documents.
